@@ -24,10 +24,4 @@ El sistema está compuesto por 6 contenedores Docker, divididos según responsab
 *   **MS Catálogo:** Python (FastAPI)
 *   **Despliegue:** Docker y Docker Compose
 
-## Flujo de Trabajo (Forking Workflow)
 
-1.  Haz un "Fork" de este repositorio a tu cuenta personal.
-2.  Clona tu fork localmente: `git clone https://github.com/TU_USUARIO/pujaz.git`
-3.  Añade este repositorio principal como *upstream*: `git remote add upstream https://github.com/REPOSITORIO_PRINCIPAL/pujaz.git`
-4.  Crea una rama para tus cambios: `git checkout -b feature/nueva-funcionalidad`
-5.  Sube tus cambios a tu fork y abre un *Pull Request* hacia este repositorio.
