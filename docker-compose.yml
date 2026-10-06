@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 1. Base de datos para MS Transaccional
+  postgres-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: pujaz_user
+      POSTGRES_PASSWORD: pujaz_password
+      POSTGRES_DB: pujaz_transaccional
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Base de datos para MS Catálogo
+  mongo-db:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # 3. Microservicio de Catálogo (Python/FastAPI)
+  ms-catalogo:
+    build:
+      context: ./ms-catalogo
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongo-db:27017
+    depends_on:
+      - mongo-db
+
+  # (Próximamente: ms-transaccional, gateway-bff, frontend-spa)
+
+volumes:
+  postgres_data:
+  mongo_data:
