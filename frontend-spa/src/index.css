@@ -44,3 +44,74 @@ body {
   margin: 0 auto;
   padding: 24px;
 }
+
+.buscador {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.buscador input {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px;
+}
+
+.lista-items {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.tarjeta-item {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d8dee4;
+  border-radius: 8px;
+}
+
+.tarjeta-item img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.tarjeta-item h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.categoria,
+.estado {
+  color: #57606a;
+  margin: 4px 0;
+}
+
+.galeria {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.galeria img {
+  max-width: 300px;
+  border-radius: 4px;
+}
+
+.panel-subasta {
+  margin-top: 24px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d8dee4;
+  border-radius: 8px;
+}
+
+.mensaje-error {
+  color: #cf222e;
+}
