@@ -1,0 +1,5 @@
+# Variables locales con secretos (se versiona solo .env.example)
+.env
+
+# macOS
+.DS_Store
