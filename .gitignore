@@ -1,0 +1,4 @@
+# Configuración local y secretos; conservar plantillas de ejemplo.
+.env
+.env.*
+!.env.example
