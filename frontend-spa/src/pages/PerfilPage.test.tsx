@@ -28,7 +28,7 @@ describe('PerfilPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     expect(await screen.findByRole('status')).toHaveTextContent('Tus datos quedaron guardados.')
-    expect(screen.getByText('Hola, Ana María Gómez')).toBeInTheDocument()
+    expect(await screen.findByText('Hola, Ana María Gómez')).toBeInTheDocument()
   })
 
   it('avisa si el correo nuevo ya lo usa otra cuenta', async () => {
