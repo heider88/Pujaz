@@ -42,7 +42,7 @@ export function buildGateway(config: Config, clients: Clients = createMockClient
         ...auctionsResolvers.Query,
         ...walletResolvers.Query,
       },
-      Mutation: { ...authResolvers.Mutation, ...walletResolvers.Mutation },
+      Mutation: { ...authResolvers.Mutation, ...usersResolvers.Mutation, ...walletResolvers.Mutation },
       Item: { ...auctionsResolvers.Item },
       Auction: { ...auctionsResolvers.Auction },
       WalletMovement: { ...auctionsResolvers.WalletMovement },
