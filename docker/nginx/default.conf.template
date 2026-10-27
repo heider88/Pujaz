@@ -17,7 +17,7 @@ server {
 
     location = /graphql {
         # No URI suffix: preserve path, query string, method and request body.
-        proxy_pass http://gateway-bff:${GATEWAY_PORT};
+        proxy_pass http://pz-api-ag:${GATEWAY_PORT};
         proxy_http_version 1.1;
         proxy_set_header Host $http_host;
         proxy_set_header Authorization $http_authorization;

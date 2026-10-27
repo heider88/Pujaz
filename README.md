@@ -14,12 +14,12 @@ La versión entregada en la primera entrega es la etiqueta **`v1.0-entrega1`**, 
 
 | Componente | Carpeta | Tecnología | Responsabilidad |
 | --- | --- | --- | --- |
-| `Pz_spa_fe` | `frontend-spa/` | TypeScript, React | Pantallas de la aplicación. Corre en el navegador; un contenedor Nginx la entrega y reenvía `/graphql` al gateway. |
-| `Pz_api_ag` | `gateway-bff/` | TypeScript, Node.js, GraphQL | Único punto de entrada: valida el JWT, llama a los componentes de lógica y publica las actualizaciones de las subastas por WebSocket. |
-| `Pz_transaccional_cl` | `ms-transaccional/` | Go | Usuarios, billetera, subastas y pujas, con transacciones. |
-| `Pz_catalogo_cl` | `ms-catalogo/` | Python, FastAPI | Fichas de las piezas y búsqueda. |
-| `Pz_transaccional_db` | migraciones en `ms-transaccional/migrations/` | PostgreSQL 15 | Datos transaccionales. |
-| `Pz_catalogo_db` | semillas en `mongo-init/` | MongoDB 6 | Catálogo de piezas. |
+| `Pz_spa_fe` | `Pz_spa_fe/` | TypeScript, React | Pantallas de la aplicación. Corre en el navegador; un contenedor Nginx la entrega y reenvía `/graphql` al gateway. |
+| `Pz_api_ag` | `Pz_api_ag/` | TypeScript, Node.js, GraphQL | Único punto de entrada: valida el JWT, llama a los componentes de lógica y publica las actualizaciones de las subastas por WebSocket. |
+| `Pz_transaccional_cl` | `Pz_transaccional_cl/` | Go | Usuarios, billetera, subastas y pujas, con transacciones. |
+| `Pz_catalogo_cl` | `Pz_catalogo_cl/` | Python, FastAPI | Fichas de las piezas y búsqueda. |
+| `Pz_transaccional_db` | migraciones en `Pz_transaccional_cl/migrations/` | PostgreSQL 15 | Datos transaccionales. |
+| `Pz_catalogo_db` | semillas en `Pz_catalogo_db/` | MongoDB 6 | Catálogo de piezas. |
 
 Más detalle:
 
@@ -66,8 +66,8 @@ Ver [credenciales de prueba](docs/credenciales_prueba.md). En resumen: usuario `
 ## Pruebas
 
 ```bash
-cd frontend-spa && npm install && npm test
-cd gateway-bff && npm install && npm test
+cd Pz_spa_fe && npm install && npm test
+cd Pz_api_ag && npm install && npm test
 ```
 
 Las pruebas de extremo a extremo (Playwright) están en `tests/e2e/` y su plan en [plan-pruebas-e2e.md](docs/plan-pruebas-e2e.md).

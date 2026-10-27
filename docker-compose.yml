@@ -1,7 +1,7 @@
 services:
-  frontend-spa:
+  pz-spa-fe:
     build:
-      context: ./frontend-spa
+      context: ./Pz_spa_fe
     ports:
       - "${NGINX_PORT:-8080}:80"
     environment:
@@ -11,7 +11,7 @@ services:
       - ./docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
     networks: [public, backend]
     depends_on:
-      gateway-bff:
+      pz-api-ag:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
@@ -19,9 +19,9 @@ services:
       timeout: 5s
       retries: 5
 
-  gateway-bff:
+  pz-api-ag:
     build:
-      context: ./gateway-bff
+      context: ./Pz_api_ag
       additional_contexts:
         contrato: ./docs/contrato
     environment:
@@ -31,13 +31,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET con al menos 32 caracteres}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       USE_MOCKS: ${USE_MOCKS:-false}
-      MS_TRANSACCIONAL_URL: ${MS_TRANSACCIONAL_URL:-http://ms-transaccional:8080}
-      MS_CATALOGO_URL: ${MS_CATALOGO_URL:-http://ms-catalogo:8000}
+      MS_TRANSACCIONAL_URL: ${MS_TRANSACCIONAL_URL:-http://pz-transaccional-cl:8080}
+      MS_CATALOGO_URL: ${MS_CATALOGO_URL:-http://pz-catalogo-cl:8000}
     networks: [backend]
     depends_on:
-      ms-transaccional:
+      pz-transaccional-cl:
         condition: service_healthy
-      ms-catalogo:
+      pz-catalogo-cl:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/graphql?query=%7B__typename%7D').then(async r => { const b = await r.json(); process.exit(r.ok && b.data?.__typename === 'Query' ? 0 : 1); }).catch(() => process.exit(1))"]
@@ -46,7 +46,7 @@ services:
       retries: 5
       start_period: 20s
 
-  postgres-db:
+  pz-transaccional-db:
     image: postgres:15
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
@@ -62,11 +62,11 @@ services:
       retries: 5
       start_period: 20s
 
-  mongo-db:
+  pz-catalogo-db:
     image: mongo:6
     volumes:
       - mongo_data:/data/db
-      - ./mongo-init/init.js:/docker-entrypoint-initdb.d/init.js:ro
+      - ./Pz_catalogo_db/init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks: [data]
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "if (db.adminCommand({ping: 1}).ok !== 1) quit(1)"]
@@ -75,14 +75,14 @@ services:
       retries: 5
       start_period: 30s
 
-  ms-catalogo:
+  pz-catalogo-cl:
     build:
-      context: ./ms-catalogo
+      context: ./Pz_catalogo_cl
     environment:
-      MONGO_URI: ${MONGO_URI:-mongodb://mongo-db:27017}
+      MONGO_URI: ${MONGO_URI:-mongodb://pz-catalogo-db:27017}
     networks: [backend, data]
     depends_on:
-      mongo-db:
+      pz-catalogo-db:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
@@ -90,15 +90,15 @@ services:
       timeout: 5s
       retries: 5
 
-  ms-transaccional:
+  pz-transaccional-cl:
     build:
-      context: ./ms-transaccional
+      context: ./Pz_transaccional_cl
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB:-pujaz_transaccional}?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@pz-transaccional-db:5432/${POSTGRES_DB:-pujaz_transaccional}?sslmode=disable
       PORT: 8080
     networks: [backend, data]
     depends_on:
-      postgres-db:
+      pz-transaccional-db:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
