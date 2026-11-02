@@ -9,7 +9,7 @@ import { PerfilUsuario } from './PerfilUsuario'
 
 describe('PerfilUsuario', () => {
   it('muestra los datos del usuario', async () => {
-    renderConSesion(<PerfilUsuario />, { ruta: '/perfil', conSesion: ana })
+    renderConSesion(<PerfilUsuario usuario={ana} token="x" />, { ruta: '/perfil', conSesion: ana })
     expect(await screen.findByRole('heading', { name: 'Mi perfil' })).toBeInTheDocument()
     expect(screen.getByLabelText('Nombre')).toHaveValue('Ana Gómez')
     expect(screen.getByLabelText('Correo')).toHaveValue('ana@correo.com')
@@ -19,7 +19,7 @@ describe('PerfilUsuario', () => {
     renderConSesion(
       <>
         <Encabezado />
-        <PerfilUsuario />
+        <PerfilUsuario usuario={ana} token="x" />
       </>,
       {
         ruta: '/perfil',
@@ -40,7 +40,7 @@ describe('PerfilUsuario', () => {
   })
 
   it('avisa si el correo nuevo ya lo usa otra cuenta', async () => {
-    renderConSesion(<PerfilUsuario />, {
+    renderConSesion(<PerfilUsuario usuario={ana} token="x" />, {
       ruta: '/perfil',
       conSesion: ana,
       mocks: [
@@ -56,7 +56,7 @@ describe('PerfilUsuario', () => {
   })
 
   it('elimina la cuenta después de confirmar, cierra la sesión y va al inicio', async () => {
-    renderConSesion(<PerfilUsuario />, {
+    renderConSesion(<PerfilUsuario usuario={ana} token="x" />, {
       ruta: '/perfil',
       conSesion: ana,
       mocks: [{ request: { query: DELETE_USER }, result: { data: { deleteUser: true } } }],

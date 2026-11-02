@@ -6,7 +6,8 @@ export interface Config {
   jwtSecret: string;
   jwtExpiresIn: string;
   useMocks: boolean;
-  msTransaccionalUrl: string | null;
+  msSubastasUrl: string | null;
+  msBilleteraUrl: string | null;
   msCatalogoUrl: string | null;
   port: number;
   corsOrigin: string;
@@ -28,11 +29,15 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
   }
 
   const useMocks = parseBoolean('USE_MOCKS', env.USE_MOCKS, false);
-  const msTransaccionalUrl = env.MS_TRANSACCIONAL_URL || null;
+  const msSubastasUrl = env.MS_SUBASTAS_URL || null;
+  const msBilleteraUrl = env.MS_BILLETERA_URL || null;
   const msCatalogoUrl = env.MS_CATALOGO_URL || null;
   if (!useMocks) {
-    if (!msTransaccionalUrl) {
-      throw new ConfigError('Falta MS_TRANSACCIONAL_URL (obligatoria si USE_MOCKS=false).');
+    if (!msSubastasUrl) {
+      throw new ConfigError('Falta MS_SUBASTAS_URL (obligatoria si USE_MOCKS=false).');
+    }
+    if (!msBilleteraUrl) {
+      throw new ConfigError('Falta MS_BILLETERA_URL (obligatoria si USE_MOCKS=false).');
     }
     if (!msCatalogoUrl) {
       throw new ConfigError('Falta MS_CATALOGO_URL (obligatoria si USE_MOCKS=false).');
@@ -43,7 +48,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || '24h',
     useMocks,
-    msTransaccionalUrl,
+    msSubastasUrl,
+    msBilleteraUrl,
     msCatalogoUrl,
     port: parsePort(env.PORT),
     corsOrigin: env.CORS_ORIGIN || 'http://localhost:5173',

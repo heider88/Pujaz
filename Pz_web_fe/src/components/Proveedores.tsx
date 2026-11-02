@@ -6,12 +6,14 @@ import { useState, type ReactNode } from 'react'
 import { crearCliente } from '../api/client'
 import { SessionProvider } from '../session/SessionProvider'
 
-export function Proveedores({ children }: { children: ReactNode }) {
+import type { Usuario } from '../api/usuarios'
+
+export function Proveedores({ children, usuario }: { children: ReactNode, usuario: Usuario | null }) {
   // Un cliente por pestaña (y uno por petición al dibujar en el servidor).
   const [client] = useState(crearCliente)
   return (
     <ApolloProvider client={client}>
-      <SessionProvider>{children}</SessionProvider>
+      <SessionProvider usuarioInicial={usuario}>{children}</SessionProvider>
     </ApolloProvider>
   )
 }

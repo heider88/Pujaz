@@ -48,13 +48,11 @@ function mensajeDeError(error: unknown): string {
   }
 }
 
-export function PerfilUsuario() {
-  const { usuario } = useSesion()
-  // RutaPrivada (en la página) garantiza que hay usuario.
-  return usuario ? <Perfil usuario={usuario} /> : null
+export function PerfilUsuario({ usuario, token }: { usuario: any, token: string }) {
+  return <Perfil usuario={usuario} token={token} />
 }
 
-function Perfil({ usuario }: { usuario: Usuario }) {
+function Perfil({ usuario, token }: { usuario: Usuario, token: string }) {
   const { cerrarSesion } = useSesion()
   const router = useRouter()
 

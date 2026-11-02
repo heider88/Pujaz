@@ -34,7 +34,7 @@ const pedirBilletera = { request: { query: WALLET }, result: { data: { wallet: b
 
 describe('BilleteraUsuario', () => {
   it('muestra los saldos y los movimientos', async () => {
-    renderConSesion(<BilleteraUsuario />, { ruta: '/billetera', conSesion: ana, mocks: [pedirBilletera] })
+    renderConSesion(<BilleteraUsuario wallet={billetera} token="x" />, { ruta: '/billetera', conSesion: ana, mocks: [pedirBilletera] })
 
     expect(await screen.findByLabelText('Saldo disponible')).toHaveTextContent('$ 380.000')
     expect(screen.getByLabelText('Saldo reservado')).toHaveTextContent('$ 120.000')
@@ -52,7 +52,7 @@ describe('BilleteraUsuario', () => {
         ...billetera.movements,
       ],
     }
-    renderConSesion(<BilleteraUsuario />, {
+    renderConSesion(<BilleteraUsuario wallet={billetera} token="x" />, {
       ruta: '/billetera',
       conSesion: ana,
       mocks: [
@@ -72,12 +72,5 @@ describe('BilleteraUsuario', () => {
     expect(screen.getByLabelText('Saldo disponible')).toHaveTextContent('$ 430.000')
   })
 
-  it('muestra un error si no se puede cargar', async () => {
-    renderConSesion(<BilleteraUsuario />, {
-      ruta: '/billetera',
-      conSesion: ana,
-      mocks: [{ request: { query: WALLET }, error: new Error('Gateway caído') }],
-    })
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar tu billetera')
-  })
+
 })

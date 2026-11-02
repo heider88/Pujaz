@@ -1,13 +1,11 @@
 'use client'
-// Mi billetera: saldo disponible y reservado, movimientos y recarga (wallet, deposit).
-// Por ahora la billetera se pide desde el navegador; en KAN-66 (Heider) saldo y movimientos
-// los carga el servidor y aquí queda solo la recarga como Client Component.
-import { useMutation, useQuery } from '@apollo/client/react'
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
+import { useMutation } from '@apollo/client/react'
 import { DEPOSIT, WALLET, type TipoMovimiento } from '../api/billetera'
 import { codigoError } from '../api/errores'
 import { formatearFecha, formatearPrecio } from '../utils/formato'
+import { useRouter } from 'next/navigation'
 
 const NOMBRE_MOVIMIENTO: Record<TipoMovimiento, string> = {
   DEPOSIT: 'Recarga',
@@ -15,24 +13,18 @@ const NOMBRE_MOVIMIENTO: Record<TipoMovimiento, string> = {
   REFUND: 'Reintegro',
 }
 
-// La reserva aparta dinero (sale del disponible); la recarga y el reintegro lo suman.
 function signo(tipo: TipoMovimiento): string {
   return tipo === 'RESERVE' ? '−' : '+'
 }
 
-export function BilleteraUsuario() {
-  const { data, loading, error, refetch } = useQuery(WALLET)
+export function BilleteraUsuario({ wallet, token }: { wallet: any, token: string }) {
   const [monto, setMonto] = useState('')
   const [promoCode, setPromoCode] = useState('')
   const [errorRecarga, setErrorRecarga] = useState<string | null>(null)
   const [recargado, setRecargado] = useState<number | null>(null)
+  const router = useRouter()
 
-  const [recargar, { loading: recargando }] = useMutation(DEPOSIT, {
-    // La billetera no tiene id: se reemplaza a mano en la caché con la que devuelve `deposit`.
-    update(cache, { data: resultado }) {
-      if (resultado) cache.writeQuery({ query: WALLET, data: { wallet: resultado.deposit } })
-    },
-  })
+  const [recargar, { loading: recargando }] = useMutation(DEPOSIT)
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -48,6 +40,7 @@ export function BilleteraUsuario() {
       setRecargado(cantidad)
       setMonto('')
       setPromoCode('')
+      router.refresh()
     } catch (e) {
       setErrorRecarga(
         codigoError(e) === 'BAD_USER_INPUT'
@@ -57,20 +50,7 @@ export function BilleteraUsuario() {
     }
   }
 
-  if (loading) return <p>Cargando tu billetera…</p>
-
-  if (error || !data) {
-    return (
-      <div role="alert" className="mensaje-error">
-        <p>No se pudo cargar tu billetera. Intenta de nuevo en un momento.</p>
-        <button type="button" onClick={() => void refetch()}>
-          Reintentar
-        </button>
-      </div>
-    )
-  }
-
-  const { available, reserved, movements } = data.wallet
+  const { available, reserved, movements } = wallet
 
   return (
     <section>
@@ -142,10 +122,10 @@ export function BilleteraUsuario() {
             </tr>
           </thead>
           <tbody>
-            {movements.map((m) => (
+            {movements.map((m: any) => (
               <tr key={m.id}>
                 <td>{formatearFecha(m.createdAt)}</td>
-                <td>{NOMBRE_MOVIMIENTO[m.type]}</td>
+                <td>{NOMBRE_MOVIMIENTO[m.type as TipoMovimiento]}</td>
                 <td className={m.type === 'RESERVE' ? 'monto-negativo' : 'monto-positivo'}>
                   {signo(m.type)} {formatearPrecio(m.amount)}
                 </td>

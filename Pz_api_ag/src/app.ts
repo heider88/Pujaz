@@ -75,16 +75,17 @@ export function createClients(config: Config): Clients {
 }
 
 export function createHttpClients(config: Config): Clients {
-  if (!config.msTransaccionalUrl || !config.msCatalogoUrl) {
-    throw new ConfigError('Faltan MS_TRANSACCIONAL_URL y MS_CATALOGO_URL para usar los MS reales.');
+  if (!config.msSubastasUrl || !config.msCatalogoUrl) {
+    throw new ConfigError('Faltan URLs de microservicios para usar los MS reales.');
   }
-  const transaccional = new HttpClient('MS transaccional', config.msTransaccionalUrl);
+  const subastas = new HttpClient('MS subastas', config.msSubastasUrl);
+  const billetera = new HttpClient('MS billetera', config.msBilleteraUrl!);
   const catalogo = new HttpClient('MS catálogo', config.msCatalogoUrl);
   return {
-    userClient: new HttpUserClient(transaccional),
+    userClient: new HttpUserClient(billetera),
     itemClient: new HttpItemClient(catalogo),
-    auctionClient: new HttpAuctionClient(transaccional),
-    walletClient: new HttpWalletClient(transaccional),
+    auctionClient: new HttpAuctionClient(subastas),
+    walletClient: new HttpWalletClient(billetera),
   };
 }
 

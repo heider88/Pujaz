@@ -12,7 +12,7 @@ import { GraphQLWsLink } from '@apollo/client/link/subscriptions'
 import { getMainDefinition } from '@apollo/client/utilities'
 import { OperationTypeNode } from 'graphql'
 import { createClient } from 'graphql-ws'
-import { getToken } from './auth'
+
 
 function urlWebSocket(): string {
   const configurada = process.env.NEXT_PUBLIC_GATEWAY_WS_URL
@@ -30,15 +30,7 @@ export function crearCliente(): ApolloClient {
 
   const httpLink = new HttpLink({ uri: '/graphql' })
 
-  const authLink = new SetContextLink((prevContext) => {
-    const token = getToken()
-    return {
-      headers: {
-        ...prevContext.headers,
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    }
-  })
+
 
   const wsLink = new GraphQLWsLink(createClient({ url: urlWebSocket() }))
 
@@ -52,7 +44,7 @@ export function crearCliente(): ApolloClient {
       )
     },
     wsLink,
-    authLink.concat(httpLink),
+    httpLink,
   )
 
   return new ApolloClient({ link, cache: new InMemoryCache() })

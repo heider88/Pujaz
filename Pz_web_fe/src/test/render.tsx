@@ -43,7 +43,7 @@ export function renderConSesion(
   }
   return render(
     <MockedProvider mocks={todos}>
-      <SessionProvider>{ui}</SessionProvider>
+      <SessionProvider usuarioInicial={conSesion ?? null}>{ui}</SessionProvider>
     </MockedProvider>,
   )
 }

@@ -29,9 +29,19 @@ export function createGateway({
     maskedErrors: { maskError },
     cors: { origin: corsOrigin },
     // Por WebSocket no llega una petición HTTP: las suscripciones son públicas y van sin usuario.
-    context: async ({ request }: { request?: Request }): Promise<GatewayContext> => ({
-      userId: request ? await getUserId(readBearerToken(request.headers.get('authorization'))) : null,
-    }),
+    context: async ({ request }: { request?: Request }): Promise<GatewayContext> => {
+      let token = request ? readBearerToken(request.headers.get('authorization')) : null;
+      if (!token && request) {
+        const cookie = request.headers.get('cookie');
+        if (cookie) {
+          const match = cookie.match(/pujaz_token=([^;]+)/);
+          if (match) token = match[1];
+        }
+      }
+      return {
+        userId: token ? await getUserId(token) : null,
+      };
+    },
     plugins: [useAllowedErrorCodes()],
   });
 }
