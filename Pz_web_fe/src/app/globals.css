@@ -475,8 +475,13 @@ textarea:focus-visible {
   border-radius: calc(var(--radio) - 2px);
 }
 
+/* En el detalle la foto se ve completa, sin recortes: si es vertical (como un reloj),
+   quedan bandas a los lados en vez de cortarle la parte de arriba y de abajo. */
 .imagen-lote--grande {
-  aspect-ratio: 3 / 2;
+  aspect-ratio: 4 / 3;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #f4f5f7;
 }
 
 .miniaturas {
