@@ -100,10 +100,11 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-pujaz_usuarios}
+      POSTGRES_DB: ${POSTGRES_USUARIOS_DB:-pujaz_usuarios}
     volumes:
     - usuarios_data:/var/lib/postgresql/data
-    - ./Pz_usuarios_cl/migrations:/docker-entrypoint-initdb.d:ro
+    - ./Pz_usuarios_cl/migrations/000001_init_schema.up.sql:/docker-entrypoint-initdb.d/000001_init_schema.sql:ro
+    - ./Pz_usuarios_cl/migrations/000002_seed_data.up.sql:/docker-entrypoint-initdb.d/000002_seed_data.sql:ro
     networks:
     - data
     healthcheck:
@@ -119,10 +120,11 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-pujaz_subastas}
+      POSTGRES_DB: ${POSTGRES_SUBASTAS_DB:-pujaz_subastas}
     volumes:
     - subastas_data:/var/lib/postgresql/data
-    - ./Pz_subastas_cl/migrations:/docker-entrypoint-initdb.d:ro
+    - ./Pz_subastas_cl/migrations/000001_init_schema.up.sql:/docker-entrypoint-initdb.d/000001_init_schema.sql:ro
+    - ./Pz_subastas_cl/migrations/000002_seed_data.up.sql:/docker-entrypoint-initdb.d/000002_seed_data.sql:ro
     networks:
     - data
     healthcheck:
@@ -138,10 +140,11 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-pujaz_billetera}
+      POSTGRES_DB: ${POSTGRES_BILLETERA_DB:-pujaz_billetera}
     volumes:
     - billetera_data:/var/lib/postgresql/data
-    - ./Pz_billetera_cl/migrations:/docker-entrypoint-initdb.d:ro
+    - ./Pz_billetera_cl/migrations/000001_init_schema.up.sql:/docker-entrypoint-initdb.d/000001_init_schema.sql:ro
+    - ./Pz_billetera_cl/migrations/000002_seed_data.up.sql:/docker-entrypoint-initdb.d/000002_seed_data.sql:ro
     networks:
     - data
     healthcheck:
@@ -232,21 +235,35 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  pz-notificaciones-db:
+    image: redis:alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - notificaciones_data:/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   pz-eventos-mq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
+    - 5672:5672
     - 15672:15672
+    volumes:
+    - eventos_data:/var/lib/rabbitmq
     networks:
     - backend
     healthcheck:
       test:
       - CMD
       - rabbitmq-diagnostics
-      - -q
-      - ping
+      - check_running
       interval: 10s
       timeout: 5s
       retries: 5
@@ -255,7 +272,7 @@ services:
     build:
       context: ./Pz_subastas_cl
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@pz-subastas-db:5432/${POSTGRES_DB:-pujaz_subastas}?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@pz-subastas-db:5432/${POSTGRES_SUBASTAS_DB:-pujaz_subastas}?sslmode=disable
       PORT: '8081'
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
@@ -265,6 +282,10 @@ services:
       pz-subastas-db:
         condition: service_healthy
       pz-eventos-mq:
+        condition: service_healthy
+      pz-billetera-cl:
+        condition: service_healthy
+      pz-notificaciones-cl:
         condition: service_healthy
     healthcheck:
       test:
@@ -285,7 +306,7 @@ services:
       PORT: '8080'
       POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
-      SPRING_DATASOURCE_URL: jdbc:postgresql://pz-usuarios-db:5432/pujaz_usuarios
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pz-usuarios-db:5432/${POSTGRES_USUARIOS_DB:-pujaz_usuarios}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
       - backend
@@ -305,7 +326,7 @@ services:
     build:
       context: ./Pz_billetera_cl
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@pz-billetera-db:5432/${POSTGRES_DB:-pujaz_billetera}?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@pz-billetera-db:5432/${POSTGRES_BILLETERA_DB:-pujaz_billetera}?sslmode=disable
       PORT: '8082'
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
@@ -327,11 +348,48 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  # Worker sin HTTP: espera a subastas saludable; restart supervisa su proceso.
+  pz-cierre-cl:
+    build:
+      context: ./services/Pz_cierre_cl
+    environment:
+      SUBASTAS_SERVICE_URL: ${SUBASTAS_SERVICE_URL:-http://pz-subastas-cl:8081}
+    networks:
+      - backend
+    depends_on:
+      pz-subastas-cl:
+        condition: service_healthy
+    restart: unless-stopped
+  pz-notificaciones-cl:
+    build:
+      context: ./services/Pz_notificaciones_cl
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
+      REDIS_HOST: pz-notificaciones-db
+      REDIS_PORT: '6379'
+    networks:
+      - backend
+      - data
+    depends_on:
+      pz-eventos-mq:
+        condition: service_healthy
+      pz-notificaciones-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
 networks:
-  public: null
+  public:
+    driver: bridge
   backend:
+    driver: bridge
     internal: true
   data:
+    driver: bridge
     internal: true
 volumes:
   usuarios_data: null
@@ -339,3 +397,5 @@ volumes:
   billetera_data: null
   mongo_data: null
   postpuja_data: null
+  notificaciones_data: null
+  eventos_data: null
