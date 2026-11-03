@@ -19,7 +19,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const pgConnStr = "postgres://pujaz_user:pujaz_password@localhost:55432/pujaz_transaccional?sslmode=disable"
+const pgConnStr = "postgres://pujaz_user:pujaz_password@127.0.0.1:55432/pujaz_transaccional?sslmode=disable"
 
 func setupTestDB(t *testing.T) *sql.DB {
 	db, err := sql.Open("postgres", pgConnStr)
