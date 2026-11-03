@@ -18,23 +18,23 @@ describe('TokenService', () => {
 
   it('firma un token que verifica con el mismo userId', async () => {
     const tokens = new TokenService(SECRET, '24h');
-    const token = await tokens.sign('7');
-    await expect(tokens.verify(token)).resolves.toEqual({ userId: '7' });
+    const token = await tokens.sign('7', 'comprador');
+    await expect(tokens.verify(token)).resolves.toEqual({ userId: '7', role: 'comprador' });
   });
 
-  it('el token solo contiene sub, iat y exp', async () => {
-    const token = await new TokenService(SECRET, '24h').sign('7');
-    expect(Object.keys(decodeJwt(token)).sort()).toEqual(['exp', 'iat', 'sub']);
+  it('el token solo contiene sub, role, iat y exp', async () => {
+    const token = await new TokenService(SECRET, '24h').sign('7', 'comprador');
+    expect(Object.keys(decodeJwt(token)).sort()).toEqual(['exp', 'iat', 'role', 'sub']);
   });
 
   it('expira a las 24 horas', async () => {
     const tokens = new TokenService(SECRET, '24h');
-    const token = await tokens.sign('7');
+    const token = await tokens.sign('7', 'comprador');
     const { iat, exp } = decodeJwt(token);
     expect(exp! - iat!).toBe(24 * 60 * 60);
 
     vi.setSystemTime(T0.getTime() + 24 * HOUR - 1000);
-    await expect(tokens.verify(token)).resolves.toEqual({ userId: '7' });
+    await expect(tokens.verify(token)).resolves.toEqual({ userId: '7', role: 'comprador' });
 
     vi.setSystemTime(T0.getTime() + 24 * HOUR + 1000);
     await expect(tokens.verify(token)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
@@ -42,13 +42,13 @@ describe('TokenService', () => {
 
   it('rechaza un token alterado', async () => {
     const tokens = new TokenService(SECRET, '24h');
-    const token = await tokens.sign('7');
+    const token = await tokens.sign('7', 'comprador');
     const tampered = token.slice(0, -2) + (token.endsWith('aa') ? 'bb' : 'aa');
     await expect(tokens.verify(tampered)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
   });
 
   it('rechaza un token firmado con otra clave', async () => {
-    const token = await new TokenService('y'.repeat(32), '24h').sign('7');
+    const token = await new TokenService('y'.repeat(32), '24h').sign('7', 'comprador');
     await expect(new TokenService(SECRET, '24h').verify(token)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
   });
 

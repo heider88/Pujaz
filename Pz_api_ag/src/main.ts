@@ -27,6 +27,7 @@ attachWebSocket(httpServer, yoga);
 httpServer.listen(config.port, () => {
   const clients = config.useMocks
     ? 'clientes falsos (USE_MOCKS=true)'
-    : `MS subastas ${config.msSubastasUrl}, billetera ${config.msBilleteraUrl} y catálogo ${config.msCatalogoUrl}`;
+    : `MS usuarios ${config.msUsuariosUrl}, subastas ${config.msSubastasUrl}, billetera ${config.msBilleteraUrl}, ` +
+      `catálogo ${config.msCatalogoUrl}, postpuja ${config.msPostpujaUrl} y notificaciones ${config.msNotificacionesUrl}`;
   console.info(`[gateway] escuchando en http://localhost:${config.port}${yoga.graphqlEndpoint} con ${clients}`);
 });

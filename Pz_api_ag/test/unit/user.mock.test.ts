@@ -4,10 +4,21 @@ import { MockUserClient } from '../../src/infrastructure/clients/mock/user.mock.
 const NEW_USER = { name: 'Luis', email: 'luis@correo.com', password: 'Secreto456' };
 
 describe('MockUserClient', () => {
-  it('crea un usuario sin devolver la contraseña', async () => {
+  it('crea un usuario sin devolver la contraseña; sin rol queda como comprador', async () => {
     const user = await new MockUserClient().createUser(NEW_USER);
-    expect(user).toEqual({ id: expect.any(String), name: 'Luis', email: 'luis@correo.com', createdAt: expect.any(String) });
+    expect(user).toEqual({
+      id: expect.any(String),
+      name: 'Luis',
+      email: 'luis@correo.com',
+      role: 'comprador',
+      createdAt: expect.any(String),
+    });
     expect(user).not.toHaveProperty('password');
+  });
+
+  it('guarda el rol enviado en minúsculas', async () => {
+    const user = await new MockUserClient().createUser({ ...NEW_USER, role: 'Vendedor' });
+    expect(user.role).toBe('vendedor');
   });
 
   it.each([
@@ -47,7 +58,13 @@ describe('MockUserClient', () => {
   it('updateUser cambia solo lo enviado y no devuelve la contraseña', async () => {
     const client = new MockUserClient();
     const user = await client.updateUser('7', { name: 'Ana María' });
-    expect(user).toEqual({ id: '7', name: 'Ana María', email: 'ana@correo.com', createdAt: '2026-10-09T14:00:00Z' });
+    expect(user).toEqual({
+      id: '7',
+      name: 'Ana María',
+      email: 'ana@correo.com',
+      role: 'comprador',
+      createdAt: '2026-10-09T14:00:00Z',
+    });
     expect(await client.getUser('7')).toEqual(user);
   });
 

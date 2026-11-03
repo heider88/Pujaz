@@ -3,8 +3,17 @@
 // así lo que el MS agregue de más no llega a la SPA.
 import type { Auction, AuctionStatus, Bid, PlacedBid, UserSummary } from '../../modules/auctions/index.js';
 import type { Item } from '../../modules/catalog/index.js';
+import type { Delivery, DeliveryStatus } from '../../modules/deliveries/index.js';
+import type { Notification, NotificationType } from '../../modules/notifications/index.js';
 import type { User } from '../../modules/users/index.js';
-import type { MovementType, Wallet, WalletMovement } from '../../modules/wallet/index.js';
+import type {
+  MovementType,
+  Reservation,
+  ReservationResult,
+  ReservationStatus,
+  Wallet,
+  WalletMovement,
+} from '../../modules/wallet/index.js';
 
 export class ContractError extends Error {
   override name = 'ContractError';
@@ -77,7 +86,7 @@ export function parseUser(value: unknown): User {
   };
 }
 
-// rest.md §1 · UserSummary
+// rest.md §3 · UserSummary
 function parseUserSummary(value: unknown, where: string): UserSummary {
   const json = object(value, where);
   return { id: string(json, 'id', where), name: string(json, 'name', where) };
@@ -95,7 +104,7 @@ function parseBid(value: unknown): Bid {
 
 const AUCTION_STATUSES: readonly AuctionStatus[] = ['OPEN', 'CLOSED'];
 
-// rest.md §1 · Auction
+// rest.md §3 · Auction
 export function parseAuction(value: unknown): Auction {
   const json = object(value, 'Auction');
   const winningBid = field(json, 'winningBid', 'Auction');
@@ -113,7 +122,7 @@ export function parseAuction(value: unknown): Auction {
   };
 }
 
-// rest.md §1.3 · respuesta de POST /auctions/{auctionId}/bids
+// rest.md §3.2 · respuesta de POST /auctions/{auctionId}/bids
 export function parsePlacedBid(value: unknown): PlacedBid {
   const json = object(value, 'PlacedBid');
   return {
@@ -122,7 +131,7 @@ export function parsePlacedBid(value: unknown): PlacedBid {
   };
 }
 
-const MOVEMENT_TYPES: readonly MovementType[] = ['DEPOSIT', 'RESERVE', 'REFUND'];
+const MOVEMENT_TYPES: readonly MovementType[] = ['DEPOSIT', 'RESERVE', 'REFUND', 'CHARGE'];
 
 function parseMovement(value: unknown): WalletMovement {
   const json = object(value, 'WalletMovement');
@@ -135,7 +144,7 @@ function parseMovement(value: unknown): WalletMovement {
   };
 }
 
-// rest.md §1.2 · Wallet
+// rest.md §2 · Wallet
 export function parseWallet(value: unknown): Wallet {
   const json = object(value, 'Wallet');
   return {
@@ -146,7 +155,63 @@ export function parseWallet(value: unknown): Wallet {
   };
 }
 
-// rest.md §2 · Item
+const RESERVATION_STATUSES: readonly ReservationStatus[] = ['ACTIVE', 'RELEASED', 'CHARGED'];
+
+// rest.md §2 · Reservation
+export function parseReservation(value: unknown): Reservation {
+  const json = object(value, 'Reservation');
+  return {
+    id: string(json, 'id', 'Reservation'),
+    userId: string(json, 'userId', 'Reservation'),
+    auctionId: string(json, 'auctionId', 'Reservation'),
+    amount: number(json, 'amount', 'Reservation'),
+    status: oneOf(json, 'status', RESERVATION_STATUSES, 'Reservation'),
+    createdAt: string(json, 'createdAt', 'Reservation'),
+  };
+}
+
+// rest.md §2 · respuesta de POST /users/{userId}/wallet/reservations
+export function parseReservationResult(value: unknown): ReservationResult {
+  const json = object(value, 'ReservationResult');
+  return {
+    reservation: parseReservation(field(json, 'reservation', 'ReservationResult')),
+    wallet: parseWallet(field(json, 'wallet', 'ReservationResult')),
+  };
+}
+
+const DELIVERY_STATUSES: readonly DeliveryStatus[] = ['PENDING', 'CONFIRMED'];
+
+// rest.md §5 · Delivery
+export function parseDelivery(value: unknown): Delivery {
+  const json = object(value, 'Delivery');
+  return {
+    id: string(json, 'id', 'Delivery'),
+    auctionId: string(json, 'auctionId', 'Delivery'),
+    itemId: string(json, 'itemId', 'Delivery'),
+    winnerId: string(json, 'winnerId', 'Delivery'),
+    amount: number(json, 'amount', 'Delivery'),
+    status: oneOf(json, 'status', DELIVERY_STATUSES, 'Delivery'),
+    createdAt: string(json, 'createdAt', 'Delivery'),
+    confirmedAt: nullableString(json, 'confirmedAt', 'Delivery'),
+  };
+}
+
+const NOTIFICATION_TYPES: readonly NotificationType[] = ['WELCOME', 'OUTBID', 'AUCTION_WON', 'AUCTION_LOST'];
+
+// rest.md §6 · Notification
+export function parseNotification(value: unknown): Notification {
+  const json = object(value, 'Notification');
+  return {
+    id: string(json, 'id', 'Notification'),
+    userId: string(json, 'userId', 'Notification'),
+    type: oneOf(json, 'type', NOTIFICATION_TYPES, 'Notification'),
+    message: string(json, 'message', 'Notification'),
+    auctionId: nullableString(json, 'auctionId', 'Notification'),
+    createdAt: string(json, 'createdAt', 'Notification'),
+  };
+}
+
+// rest.md §4 · Item
 export function parseItem(value: unknown): Item {
   const json = object(value, 'Item');
   return {

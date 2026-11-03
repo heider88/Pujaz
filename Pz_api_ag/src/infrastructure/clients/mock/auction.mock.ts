@@ -40,6 +40,17 @@ function seedAuctions(now: number): StoredAuction[] {
       bids: [],
       endsAt: new Date(now - DAY),
     },
+    // Cerrada y ganada por Ana: es la subasta de su entrega en delivery.mock.ts.
+    {
+      id: '14',
+      itemId: MOCK_ITEM_IDS.coin,
+      basePrice: 50000,
+      bids: [
+        { id: '50', amount: 55000, bidder: LUIS, createdAt: new Date(now - 3 * DAY).toISOString() },
+        { id: '51', amount: 60000, bidder: ANA, createdAt: new Date(now - 2 * DAY - 60 * 60 * 1000).toISOString() },
+      ],
+      endsAt: new Date(now - 2 * DAY),
+    },
   ];
 }
 
@@ -89,7 +100,7 @@ export class MockAuctionClient implements AuctionClient {
     }
     const user = await users.getUser(userId);
 
-    wallet.reserve(userId, auctionId, amount);
+    wallet.reserveForBid(userId, auctionId, amount);
     if (previous) {
       wallet.refund(previous.bidder.id, auctionId, previous.amount);
     }

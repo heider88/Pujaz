@@ -48,7 +48,8 @@ export class MockUserClient implements UserClient {
       id: String(this.nextId++),
       name: input.name,
       email: input.email,
-      role: 'comprador',
+      // Como Pz_usuarios_cl: en minúsculas y "comprador" si no viene.
+      role: input.role?.trim().toLowerCase() || 'comprador',
       password: input.password,
       createdAt: new Date().toISOString(),
     };

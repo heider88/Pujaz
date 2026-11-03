@@ -1,4 +1,4 @@
-// Contrato con el MS transaccional para usuarios (rest.md §1.1).
+// Contrato con Pz_usuarios_cl (rest.md §1).
 
 export interface User {
   id: string;
@@ -12,9 +12,11 @@ export interface NewUser {
   name: string;
   email: string;
   password: string;
+  // Si no viene, Pz_usuarios_cl usa "comprador".
+  role?: string;
 }
 
-// Solo los campos que cambian (rest.md §1.1, PATCH).
+// Solo los campos que cambian (rest.md §1, PATCH).
 export interface UserChanges {
   name?: string;
   email?: string;

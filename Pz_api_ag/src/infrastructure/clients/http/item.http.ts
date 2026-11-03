@@ -2,7 +2,7 @@ import type { Item, ItemClient, NewItem } from '../../../modules/catalog/index.j
 import { parseItem, parseList, parseListOf } from '../../http/contract.js';
 import type { HttpClient } from '../../http/http-client.js';
 
-// MS catálogo, rest.md §2.
+// Pz_catalogo_cl, rest.md §4.
 export class HttpItemClient implements ItemClient {
   constructor(private readonly http: HttpClient) {}
 

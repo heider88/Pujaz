@@ -71,7 +71,7 @@ async function startGateway() {
     return { events, errors };
   }
 
-  return { graphql, subscribe, tokenFor: (userId: string) => tokenService.sign(userId) };
+  return { graphql, subscribe, tokenFor: (userId: string, role = 'comprador') => tokenService.sign(userId, role) };
 }
 
 function sleep(ms: number) {

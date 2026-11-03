@@ -1,4 +1,4 @@
-// Contrato con el MS transaccional para subastas (rest.md §1.3).
+// Contrato con Pz_subastas_cl (rest.md §3).
 
 export type AuctionStatus = 'OPEN' | 'CLOSED';
 

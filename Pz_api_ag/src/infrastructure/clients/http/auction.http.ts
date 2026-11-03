@@ -2,7 +2,7 @@ import type { Auction, AuctionClient, NewAuction, PlacedBid } from '../../../mod
 import { parseAuction, parseListOf, parsePlacedBid } from '../../http/contract.js';
 import type { HttpClient } from '../../http/http-client.js';
 
-// MS transaccional, rest.md §1.3.
+// Pz_subastas_cl, rest.md §3.
 export class HttpAuctionClient implements AuctionClient {
   constructor(private readonly http: HttpClient) {}
 

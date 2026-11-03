@@ -64,6 +64,9 @@ services:
       MS_CATALOGO_URL: ${MS_CATALOGO_URL:-http://pz-catalogo-cl:8000}
       MS_SUBASTAS_URL: ${MS_SUBASTAS_URL:-http://pz-subastas-cl:8081}
       MS_BILLETERA_URL: ${MS_BILLETERA_URL:-http://pz-billetera-cl:8082}
+      MS_USUARIOS_URL: ${MS_USUARIOS_URL:-http://pz-usuarios-cl:8080}
+      MS_POSTPUJA_URL: ${MS_POSTPUJA_URL:-http://pz-postpuja-cl:8000}
+      MS_NOTIFICACIONES_URL: ${MS_NOTIFICACIONES_URL:-http://pz-notificaciones-cl:8000}
     networks:
     - backend
     depends_on:
@@ -72,6 +75,10 @@ services:
       pz-subastas-cl:
         condition: service_healthy
       pz-billetera-cl:
+        condition: service_healthy
+      pz-usuarios-cl:
+        condition: service_healthy
+      pz-postpuja-cl:
         condition: service_healthy
     healthcheck:
       test:

@@ -6,6 +6,7 @@ export const MOCK_ITEM_IDS = {
   watch: '64f1c0aa9b1e8a0012ab34cd',
   lamp: '64f1c0aa9b1e8a0012ab34ce',
   painting: '64f1c0aa9b1e8a0012ab34cf',
+  coin: '64f1c0aa9b1e8a0012ab34d0',
 } as const;
 
 const SEED_ITEMS: Item[] = [
@@ -35,6 +36,15 @@ const SEED_ITEMS: Item[] = [
     images: ['https://picsum.photos/seed/pintura/600/400'],
     documents: [],
     basePrice: 800000,
+  },
+  {
+    id: MOCK_ITEM_IDS.coin,
+    name: 'Moneda de oro de 1886',
+    description: 'Cóndor colombiano, con certificado de autenticidad',
+    category: 'Numismática',
+    images: ['https://picsum.photos/seed/moneda/600/400'],
+    documents: ['https://example.com/certificado-moneda.pdf'],
+    basePrice: 50000,
   },
 ];
 

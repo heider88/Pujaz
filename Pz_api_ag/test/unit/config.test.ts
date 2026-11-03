@@ -3,8 +3,12 @@ import { ConfigError, loadConfig } from '../../src/config.js';
 
 const VALID_SECRET = 'x'.repeat(32);
 const MS_URLS = {
-  MS_TRANSACCIONAL_URL: 'http://pz-transaccional-cl:8080',
+  MS_USUARIOS_URL: 'http://pz-usuarios-cl:8080',
+  MS_SUBASTAS_URL: 'http://pz-subastas-cl:8081',
+  MS_BILLETERA_URL: 'http://pz-billetera-cl:8082',
   MS_CATALOGO_URL: 'http://pz-catalogo-cl:8000',
+  MS_POSTPUJA_URL: 'http://pz-postpuja-cl:8000',
+  MS_NOTIFICACIONES_URL: 'http://pz-notificaciones-cl:8000',
 };
 
 describe('loadConfig', () => {
@@ -32,18 +36,24 @@ describe('loadConfig', () => {
       jwtSecret: VALID_SECRET,
       jwtExpiresIn: '24h',
       useMocks: false,
-      msTransaccionalUrl: MS_URLS.MS_TRANSACCIONAL_URL,
+      msUsuariosUrl: MS_URLS.MS_USUARIOS_URL,
+      msSubastasUrl: MS_URLS.MS_SUBASTAS_URL,
+      msBilleteraUrl: MS_URLS.MS_BILLETERA_URL,
       msCatalogoUrl: MS_URLS.MS_CATALOGO_URL,
+      msPostpujaUrl: MS_URLS.MS_POSTPUJA_URL,
+      msNotificacionesUrl: MS_URLS.MS_NOTIFICACIONES_URL,
       port: 4000,
       corsOrigin: 'http://localhost:5173',
     });
   });
 
-  it('exige las URL de los MS solo si USE_MOCKS=false', () => {
-    expect(() => loadConfig({ JWT_SECRET: VALID_SECRET })).toThrow(/MS_TRANSACCIONAL_URL/);
-    expect(() =>
-      loadConfig({ JWT_SECRET: VALID_SECRET, MS_TRANSACCIONAL_URL: MS_URLS.MS_TRANSACCIONAL_URL }),
-    ).toThrow(/MS_CATALOGO_URL/);
+  it.each(Object.keys(MS_URLS))('con USE_MOCKS=false exige %s', (name) => {
+    const env: Record<string, string> = { JWT_SECRET: VALID_SECRET, ...MS_URLS };
+    delete env[name];
+    expect(() => loadConfig(env)).toThrow(new RegExp(name));
+  });
+
+  it('con USE_MOCKS=true no exige las URL de los MS', () => {
     expect(loadConfig({ JWT_SECRET: VALID_SECRET, USE_MOCKS: 'true' }).useMocks).toBe(true);
   });
 

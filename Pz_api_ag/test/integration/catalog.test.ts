@@ -39,6 +39,7 @@ describe('lecturas del catálogo y las subastas', () => {
       MOCK_ITEM_IDS.watch,
       MOCK_ITEM_IDS.lamp,
       MOCK_ITEM_IDS.painting,
+      MOCK_ITEM_IDS.coin,
     ]);
   });
 
@@ -109,7 +110,7 @@ describe('lecturas del catálogo y las subastas', () => {
     const { data } = await graphql('{ items { name auction { currentPrice } } }');
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy.mock.calls[0]![0].sort()).toEqual(Object.values(MOCK_ITEM_IDS).sort());
-    expect(data.items.map((item: any) => item.auction?.currentPrice ?? null)).toEqual([120000, 250000, null]);
+    expect(data.items.map((item: any) => item.auction?.currentPrice ?? null)).toEqual([120000, 250000, null, 60000]);
   });
 
   it('6b. items { auction { item } } hace una sola llamada a getItemsByIds', async () => {

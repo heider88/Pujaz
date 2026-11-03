@@ -21,7 +21,7 @@ function setup() {
     return response.json() as Promise<any>;
   }
 
-  return { graphql, clients, tokenFor: (userId: string) => tokenService.sign(userId) };
+  return { graphql, clients, tokenFor: (userId: string, role = 'vendedor') => tokenService.sign(userId, role) };
 }
 
 const CREATE = `mutation ($input: CreateItemInput!) {

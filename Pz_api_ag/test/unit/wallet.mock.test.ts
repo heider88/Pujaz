@@ -47,4 +47,34 @@ describe('MockWalletClient', () => {
     expect(again.available).toBe(380000);
     expect(again.movements).toHaveLength(2);
   });
+
+  it('reserve baja available, sube reserved y devuelve una reserva ACTIVE', async () => {
+    const client = new MockWalletClient();
+    const { reservation, wallet } = await client.reserve('7', '12', 100000);
+    expect(reservation).toMatchObject({ userId: '7', auctionId: '12', amount: 100000, status: 'ACTIVE' });
+    expect(wallet).toMatchObject({ available: 280000, reserved: 220000 });
+    expect(wallet.movements[0]).toMatchObject({ type: 'RESERVE', amount: 100000, auctionId: '12' });
+  });
+
+  it('reserve sin saldo responde INSUFFICIENT_FUNDS y no mueve nada', async () => {
+    const client = new MockWalletClient();
+    await expect(client.reserve('7', '12', 380001)).rejects.toMatchObject({ code: 'INSUFFICIENT_FUNDS' });
+    expect(await client.getWallet('7')).toMatchObject({ available: 380000, reserved: 120000 });
+  });
+
+  it('releaseReservation es idempotente: liberar dos veces devuelve el dinero una sola vez', async () => {
+    const client = new MockWalletClient();
+    const { reservation } = await client.reserve('7', '12', 100000);
+    await expect(client.releaseReservation('7', reservation.id)).resolves.toMatchObject({ status: 'RELEASED' });
+    await expect(client.releaseReservation('7', reservation.id)).resolves.toMatchObject({ status: 'RELEASED' });
+    const wallet = await client.getWallet('7');
+    expect(wallet).toMatchObject({ available: 380000, reserved: 120000 });
+    expect(wallet.movements.filter((movement) => movement.type === 'REFUND')).toHaveLength(1);
+  });
+
+  it('releaseReservation de una reserva de otro usuario responde NOT_FOUND', async () => {
+    const client = new MockWalletClient();
+    const { reservation } = await client.reserve('7', '12', 1000);
+    await expect(client.releaseReservation('9', reservation.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
 });
