@@ -4,7 +4,7 @@ import com.pujaz.usuarios.models.User;
 import java.time.LocalDateTime;
 
 public class UserResponse {
-    private Long id;
+    private String id;
     private String name;
     private String email;
     private String role;
@@ -14,7 +14,7 @@ public class UserResponse {
     public UserResponse() {}
 
     public UserResponse(User user) {
-        this.id = user.getId();
+        this.id = user.getId() != null ? String.valueOf(user.getId()) : null;
         this.name = user.getName();
         this.email = user.getEmail();
         this.role = user.getRole();
@@ -22,7 +22,7 @@ public class UserResponse {
         this.createdAt = user.getCreatedAt();
     }
 
-    public Long getId() { return id; }
+    public String getId() { return id; }
     public String getName() { return name; }
     public String getEmail() { return email; }
     public String getRole() { return role; }

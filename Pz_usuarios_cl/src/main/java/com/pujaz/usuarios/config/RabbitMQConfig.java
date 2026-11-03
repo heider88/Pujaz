@@ -1,6 +1,7 @@
 package com.pujaz.usuarios.config;
 
-import org.springframework.amqp.core.*;
+import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
@@ -13,23 +14,12 @@ import org.springframework.context.annotation.Profile;
 @Profile("!test")
 public class RabbitMQConfig {
 
-    public static final String EXCHANGE_NAME = "pujaz.exchange";
-    public static final String QUEUE_NAME = "pujaz.usuarios.registrados";
-    public static final String ROUTING_KEY = "usuario.registrado";
+    public static final String EXCHANGE_NAME = "eventos";
+    public static final String ROUTING_KEY = "UsuarioRegistrado";
 
     @Bean
-    public TopicExchange exchange() {
-        return new TopicExchange(EXCHANGE_NAME);
-    }
-
-    @Bean
-    public Queue queue() {
-        return new Queue(QUEUE_NAME, true);
-    }
-
-    @Bean
-    public Binding binding(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY);
+    public FanoutExchange eventosExchange() {
+        return new FanoutExchange(EXCHANGE_NAME, true, false);
     }
 
     @Bean

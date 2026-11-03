@@ -15,20 +15,15 @@ public class UserEventPublisher {
     }
 
     public void publishUserRegistered(UsuarioRegistradoEvent event) {
-        // Publicar al exchange "eventos" de Heider (fanout -> billetera_eventos)
         try {
-            amqpTemplate.convertAndSend("eventos", "UsuarioRegistrado", event);
+            amqpTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_NAME,
+                RabbitMQConfig.ROUTING_KEY,
+                event
+            );
+            System.out.println(" [x] Evento publicado en exchange 'eventos': UsuarioRegistrado ID=" + event.getUserId());
         } catch (Exception e) {
-            System.err.println("Aviso eventos: " + e.getMessage());
+            System.err.println("Error publicando en exchange 'eventos': " + e.getMessage());
         }
-
-        // Publicar a la cola directa de usuarios
-        try {
-            amqpTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, event);
-        } catch (Exception e) {
-            System.err.println("Aviso pujaz.exchange: " + e.getMessage());
-        }
-
-        System.out.println(" [x] Evento publicado en RabbitMQ para billetera: UsuarioRegistrado ID=" + event.getUserId());
     }
 }

@@ -19,7 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -48,6 +48,8 @@ public class UserIntegrationTest {
         userRepository.deleteAll();
         User ana = new User("Ana", "ana@correo.com", passwordEncoder.encode("12345678"), "comprador");
         userRepository.save(ana);
+        User heider = new User("Heider", "heider@correo.com", passwordEncoder.encode("12345678"), "vendedor");
+        userRepository.save(heider);
     }
 
     @Test
@@ -57,11 +59,11 @@ public class UserIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("ok")))
                 .andExpect(jsonPath("$.service", is("pz_usuarios_cl")))
-                .andExpect(jsonPath("$.users_count", is(1)));
+                .andExpect(jsonPath("$.users_count", is(2)));
     }
 
     @Test
-    @DisplayName("2. Registro exitoso con contraseña fuerte")
+    @DisplayName("2. Registro exitoso devuelve id como texto String")
     void testRegisterSuccess() throws Exception {
         RegisterRequest request = new RegisterRequest();
         request.setName("Carlos");
@@ -73,13 +75,14 @@ public class UserIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", isA(String.class)))
                 .andExpect(jsonPath("$.name", is("Carlos")))
                 .andExpect(jsonPath("$.email", is("carlos@correo.com")))
                 .andExpect(jsonPath("$.role", is("comprador")));
     }
 
     @Test
-    @DisplayName("3. Rechazo de registro con contraseña débil (sin número)")
+    @DisplayName("3. Rechazo de contraseña débil devuelve {code: BAD_USER_INPUT, message}")
     void testRegisterWeakPassword() throws Exception {
         RegisterRequest request = new RegisterRequest();
         request.setName("Debil");
@@ -89,11 +92,13 @@ public class UserIntegrationTest {
         mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", is("BAD_USER_INPUT")))
+                .andExpect(jsonPath("$.message", not(emptyOrNullString())));
     }
 
     @Test
-    @DisplayName("4. Rechazo de registro con correo duplicado")
+    @DisplayName("4. Rechazo de correo duplicado devuelve 409 EMAIL_TAKEN")
     void testRegisterDuplicateEmail() throws Exception {
         RegisterRequest request = new RegisterRequest();
         request.setName("Clon");
@@ -103,72 +108,104 @@ public class UserIntegrationTest {
         mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code", is("EMAIL_TAKEN")))
+                .andExpect(jsonPath("$.message", not(emptyOrNullString())));
     }
 
     @Test
-    @DisplayName("5. Login exitoso con BCrypt")
-    void testLoginSuccess() throws Exception {
+    @DisplayName("5. Login exitoso en POST /users/verify-credentials con id como texto")
+    void testVerifyCredentialsSuccess() throws Exception {
         LoginRequest request = new LoginRequest();
         request.setEmail("ana@correo.com");
         request.setPassword("12345678");
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/users/verify-credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", isA(String.class)))
                 .andExpect(jsonPath("$.email", is("ana@correo.com")))
                 .andExpect(jsonPath("$.name", is("Ana")));
     }
 
     @Test
-    @DisplayName("6. Login fallido con contraseña incorrecta")
+    @DisplayName("6. Login fallido devuelve 401 INVALID_CREDENTIALS")
     void testLoginInvalidPassword() throws Exception {
         LoginRequest request = new LoginRequest();
         request.setEmail("ana@correo.com");
         request.setPassword("incorrecta123");
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/users/verify-credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code", is("INVALID_CREDENTIALS")))
+                .andExpect(jsonPath("$.message", not(emptyOrNullString())));
     }
 
     @Test
-    @DisplayName("7. Consultar perfil por ID existente")
+    @DisplayName("7. Consultar perfil existente devuelve id como String")
     void testGetProfileSuccess() throws Exception {
         User ana = userRepository.findByEmail("ana@correo.com").orElseThrow();
 
         mockMvc.perform(get("/users/" + ana.getId()))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(String.valueOf(ana.getId()))))
                 .andExpect(jsonPath("$.name", is("Ana")));
     }
 
     @Test
-    @DisplayName("8. Consultar perfil de ID inexistente debe dar 404")
+    @DisplayName("8. Consultar perfil inexistente devuelve 404 NOT_FOUND")
     void testGetProfileNotFound() throws Exception {
         mockMvc.perform(get("/users/9999"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", is("NOT_FOUND")))
+                .andExpect(jsonPath("$.message", not(emptyOrNullString())));
     }
 
     @Test
-    @DisplayName("9. Actualizar perfil con PATCH")
-    void testUpdateProfile() throws Exception {
+    @DisplayName("9. Actualizar perfil (nombre, email y password) sin permitir cambiar role")
+    void testUpdateProfileEmailAndPassword() throws Exception {
+        User ana = userRepository.findByEmail("ana@correo.com").orElseThrow();
+
+        String jsonPayload = "{\"name\":\"Ana Maria\",\"email\":\"anamaria@correo.com\",\"password\":\"NuevaClave123\",\"role\":\"vendedor\"}";
+
+        mockMvc.perform(patch("/users/" + ana.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name", is("Ana Maria")))
+                .andExpect(jsonPath("$.email", is("anamaria@correo.com")))
+                .andExpect(jsonPath("$.role", is("comprador"))); // role NO debe cambiar
+
+        // Verificar que pueda iniciar sesión con el nuevo correo y la nueva contraseña
+        LoginRequest loginReq = new LoginRequest();
+        loginReq.setEmail("anamaria@correo.com");
+        loginReq.setPassword("NuevaClave123");
+
+        mockMvc.perform(post("/users/verify-credentials")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginReq)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("10. Actualizar perfil con email de otro usuario devuelve 409 EMAIL_TAKEN")
+    void testUpdateProfileDuplicateEmail() throws Exception {
         User ana = userRepository.findByEmail("ana@correo.com").orElseThrow();
         UpdateUserRequest update = new UpdateUserRequest();
-        update.setName("Ana Maria");
-        update.setRole("vendedor");
+        update.setEmail("heider@correo.com");
 
         mockMvc.perform(patch("/users/" + ana.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(update)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name", is("Ana Maria")))
-                .andExpect(jsonPath("$.role", is("vendedor")));
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code", is("EMAIL_TAKEN")));
     }
 
     @Test
-    @DisplayName("10. Eliminar cuenta y verificar que bloquea el login")
+    @DisplayName("11. Eliminar cuenta y verificar bloqueo con 401 INVALID_CREDENTIALS")
     void testDeleteAndBlockLogin() throws Exception {
         User ana = userRepository.findByEmail("ana@correo.com").orElseThrow();
 
@@ -179,9 +216,10 @@ public class UserIntegrationTest {
         request.setEmail("ana@correo.com");
         request.setPassword("12345678");
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/users/verify-credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code", is("INVALID_CREDENTIALS")));
     }
 }

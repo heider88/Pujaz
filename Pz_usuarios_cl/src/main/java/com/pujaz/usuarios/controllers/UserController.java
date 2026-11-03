@@ -27,7 +27,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/auth/login")
+    @PostMapping({"/users/verify-credentials", "/auth/login"})
     public ResponseEntity<UserResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(userService.login(request));
     }
