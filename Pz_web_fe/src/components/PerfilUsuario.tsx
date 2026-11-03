@@ -10,6 +10,8 @@ import { DELETE_USER, UPDATE_USER, type Usuario } from '../api/usuarios'
 import { useSesion } from '../session/SessionContext'
 import { formatearFecha, formatearPrecio } from '../utils/formato'
 import { Avatar } from './Avatar'
+import { EntregasUsuario } from './EntregasUsuario'
+import { NotificacionesUsuario } from './NotificacionesUsuario'
 
 // Saldo de la billetera en el resumen del perfil. Si no carga, simplemente no se muestra:
 // la billetera tiene su propia página con el detalle y los errores.
@@ -179,6 +181,14 @@ function Perfil({ usuario }: { usuario: Usuario }) {
             Eliminar mi cuenta
           </button>
         )}
+
+        <hr style={{ margin: '2rem 0' }} />
+        <h2>Mis Entregas</h2>
+        <EntregasUsuario />
+
+        <hr style={{ margin: '2rem 0' }} />
+        <h2>Mis Notificaciones</h2>
+        <NotificacionesUsuario />
       </section>
     </div>
   )

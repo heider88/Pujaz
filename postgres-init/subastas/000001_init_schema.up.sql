@@ -11,5 +11,6 @@ CREATE TABLE bids (
     auction_id INT NOT NULL REFERENCES auctions(id),
     user_id INT NOT NULL,
     amount DECIMAL(12,2) NOT NULL,
+    reservation_id VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
