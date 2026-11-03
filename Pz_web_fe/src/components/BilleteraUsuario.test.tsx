@@ -34,7 +34,7 @@ const pedirBilletera = { request: { query: WALLET }, result: { data: { wallet: b
 
 describe('BilleteraUsuario', () => {
   it('muestra los saldos y los movimientos', async () => {
-    renderConSesion(<BilleteraUsuario wallet={billetera} token="x" />, { ruta: '/billetera', conSesion: ana, mocks: [pedirBilletera] })
+    renderConSesion(<BilleteraUsuario wallet={billetera} />, { ruta: '/billetera', conSesion: ana, mocks: [pedirBilletera] })
 
     expect(await screen.findByLabelText('Saldo disponible')).toHaveTextContent('$ 380.000')
     expect(screen.getByLabelText('Saldo reservado')).toHaveTextContent('$ 120.000')
@@ -52,7 +52,7 @@ describe('BilleteraUsuario', () => {
         ...billetera.movements,
       ],
     }
-    renderConSesion(<BilleteraUsuario wallet={billetera} token="x" />, {
+    renderConSesion(<BilleteraUsuario wallet={billetera} />, {
       ruta: '/billetera',
       conSesion: ana,
       mocks: [

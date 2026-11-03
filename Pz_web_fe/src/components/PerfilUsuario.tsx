@@ -3,7 +3,6 @@
 // Por ahora los datos salen de la sesión del navegador; en KAN-66 (Heider) los carga el servidor.
 import { useMutation, useQuery } from '@apollo/client/react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 import { WALLET } from '../api/billetera'
 import { codigoError } from '../api/errores'
@@ -48,13 +47,14 @@ function mensajeDeError(error: unknown): string {
   }
 }
 
-export function PerfilUsuario({ usuario, token }: { usuario: any, token: string }) {
-  return <Perfil usuario={usuario} token={token} />
+export function PerfilUsuario({ usuario }: { usuario: Usuario }) {
+  return <Perfil usuario={usuario} />
 }
 
-function Perfil({ usuario, token }: { usuario: Usuario, token: string }) {
-  const { cerrarSesion } = useSesion()
-  const router = useRouter()
+function Perfil({ usuario }: { usuario: Usuario }) {
+  const { usuario: deLaSesion, cerrarSesion, actualizarUsuario } = useSesion()
+  // Tras guardar, la sesión tiene los datos nuevos; antes, los que trajo el servidor.
+  const actual = deLaSesion ?? usuario
 
   const [name, setName] = useState(usuario.name)
   const [email, setEmail] = useState(usuario.email)
@@ -70,7 +70,7 @@ function Perfil({ usuario, token }: { usuario: Usuario, token: string }) {
     evento.preventDefault()
     setError(null)
     setGuardado(false)
-    if (name.trim() !== usuario.name && !REGLA_NOMBRE.test(name.trim())) {
+    if (name.trim() !== actual.name && !REGLA_NOMBRE.test(name.trim())) {
       setError('El nombre debe tener entre 3 y 50 caracteres y solo contener letras y espacios.')
       return
     }
@@ -80,15 +80,16 @@ function Perfil({ usuario, token }: { usuario: Usuario, token: string }) {
     }
     // Solo se envía lo que cambió.
     const input: { name?: string; email?: string; password?: string } = {}
-    if (name.trim() !== usuario.name) input.name = name.trim()
-    if (email.trim() !== usuario.email) input.email = email.trim()
+    if (name.trim() !== actual.name) input.name = name.trim()
+    if (email.trim() !== actual.email) input.email = email.trim()
     if (password) input.password = password
     if (Object.keys(input).length === 0) {
       setError('No hay cambios para guardar.')
       return
     }
     try {
-      await actualizar({ variables: { input } })
+      const { data } = await actualizar({ variables: { input } })
+      if (data) actualizarUsuario(data.updateUser)
       setPassword('')
       setGuardado(true)
     } catch (e) {
@@ -100,10 +101,8 @@ function Perfil({ usuario, token }: { usuario: Usuario, token: string }) {
     setError(null)
     try {
       const { data } = await eliminar()
-      if (data?.deleteUser) {
-        router.replace('/')
-        cerrarSesion()
-      }
+      // cerrarSesion borra la cookie y lleva al inicio.
+      if (data?.deleteUser) cerrarSesion()
     } catch (e) {
       setError(mensajeDeError(e))
     }
@@ -112,9 +111,9 @@ function Perfil({ usuario, token }: { usuario: Usuario, token: string }) {
   return (
     <div className="perfil">
       <aside className="perfil__resumen" aria-label="Resumen de tu cuenta">
-        <Avatar nombre={usuario.name} grande />
-        <p className="perfil__nombre">{usuario.name}</p>
-        <p className="perfil__correo">{usuario.email}</p>
+        <Avatar nombre={actual.name} grande />
+        <p className="perfil__nombre">{actual.name}</p>
+        <p className="perfil__correo">{actual.email}</p>
         <p className="categoria">Miembro desde {formatearFecha(usuario.createdAt)}</p>
         <SaldoResumen />
       </aside>

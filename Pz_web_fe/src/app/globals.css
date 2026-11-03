@@ -1143,6 +1143,56 @@ section.pagina-angosta h2 {
   color: var(--tinta);
 }
 
+/* ---------- Registro: comprar o vender ---------- */
+
+.selector-rol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0 4px;
+  padding: 0;
+  border: 0;
+}
+
+.selector-rol legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 0.95rem;
+  color: var(--texto);
+}
+
+.opcion-rol {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  cursor: pointer;
+}
+
+.opcion-rol--activa {
+  border-color: var(--laton);
+  box-shadow: inset 0 0 0 1px var(--laton);
+}
+
+.opcion-rol input {
+  margin-top: 4px;
+  accent-color: var(--tinta);
+}
+
+.opcion-rol strong {
+  display: block;
+  color: var(--tinta);
+}
+
+.opcion-rol small {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--gris);
+  line-height: 1.35;
+}
+
 /* ---------- Publicar ---------- */
 
 .publicar {

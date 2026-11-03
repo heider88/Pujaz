@@ -1,6 +1,9 @@
 // Operaciones GraphQL de usuarios y sesión (contrato: login, me).
 import { gql, type TypedDocumentNode } from '@apollo/client'
 
+// Roles del contrato (RegisterInput.role). Solo el vendedor puede publicar piezas.
+export type Rol = 'comprador' | 'vendedor'
+
 export interface Usuario {
   id: string
   name: string
@@ -46,7 +49,7 @@ export const LOGIN: TypedDocumentNode<
 
 export const REGISTER: TypedDocumentNode<
   { register: AuthPayload },
-  { input: { name: string; email: string; password: string } }
+  { input: { name: string; email: string; password: string; role: Rol } }
 > = gql`
   mutation Register($input: RegisterInput!) {
     register(input: $input) {
