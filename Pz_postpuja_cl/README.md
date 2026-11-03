@@ -11,18 +11,23 @@ Se encarga de lo que pasa después de ganar una subasta: la entrega de la pieza.
 Estructura igual a la del catálogo: `src/api` (rutas HTTP), `src/core` (reglas),
 `src/infrastructure` (MongoDB y RabbitMQ) y `src/models`.
 
-## Evento SubastaCerrada (propuesta, ajustar con quien haga Pz_cierre_cl)
+## Evento SubastaCerrada
 
-- Exchange `pujaz.eventos` (tipo `topic`, durable), routing key `subasta.cerrada`.
-- Cola propia y durable: `postpuja.subasta-cerrada`.
+Lo publica Pz_subastas_cl al cerrar una subasta vencida.
+
+- Exchange `eventos` (tipo `fanout`, durable), el mismo que usan Pz_subastas_cl y Pz_billetera_cl.
+  La routing key es el nombre del evento; como el fanout le entrega todo a todos, Postpuja solo
+  procesa los mensajes con routing key `SubastaCerrada` y confirma e ignora los demás.
+- Cola propia y durable: `postpuja_eventos`.
 - Cuerpo JSON:
 
 ```json
-{ "auctionId": "a1", "itemId": "64f1...", "winnerId": "7", "amount": 150000.0, "closedAt": "2026-11-02T20:00:00Z" }
+{ "auctionId": "12", "itemId": "60d5ec49f1b2c3d4e5f60001", "winnerId": 7, "amount": 150000.0 }
 ```
 
-`winnerId` y `amount` van en `null` si no hubo pujas. Los nombres se cambian con las variables
-`EVENTOS_EXCHANGE`, `SUBASTA_CERRADA_ROUTING_KEY` y `POSTPUJA_COLA`.
+`winnerId` va en `null` si no hubo pujas (entonces no se crea entrega). Si llega `closedAt`, se usa
+como fecha de la entrega; si no, la hora en que llega el evento. Los nombres se cambian con las
+variables `EVENTOS_EXCHANGE`, `EVENTO_SUBASTA_CERRADA` y `POSTPUJA_COLA`.
 
 Tácticas: **consumidor idempotente** (índice único por `auctionId`: un evento repetido no crea dos
 entregas), **cola durable** (si Postpuja está caído, los eventos esperan) y **reintento** (si falla la

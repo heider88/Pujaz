@@ -1,8 +1,10 @@
 """Consumidor del evento SubastaCerrada (estilo publicar-suscribir con Pz_eventos_mq, RabbitMQ).
 
-Pz_cierre_cl publica SubastaCerrada cuando vence una subasta; Postpuja no conoce a quien publica,
-solo el evento (bajo acoplamiento). Cola propia y durable: si Postpuja está caído, los eventos
-esperan en RabbitMQ y se procesan al volver.
+Pz_subastas_cl publica todos sus eventos en el exchange `eventos` (tipo fanout) y pone el nombre
+del evento como routing key. Como en un fanout todos los suscriptores reciben todo, Postpuja
+revisa la routing key y solo procesa SubastaCerrada; los demás eventos se confirman y se ignoran.
+Postpuja no conoce a quien publica, solo el evento (bajo acoplamiento). Cola propia y durable:
+si Postpuja está caído, los eventos esperan en RabbitMQ y se procesan al volver.
 """
 import asyncio
 import json
@@ -20,9 +22,10 @@ from src.models.entrega import SubastaCerrada
 log = logging.getLogger("postpuja.eventos")
 
 RABBITMQ_URL = os.getenv("RABBITMQ_URL", "")
-EXCHANGE = os.getenv("EVENTOS_EXCHANGE", "pujaz.eventos")
-ROUTING_KEY = os.getenv("SUBASTA_CERRADA_ROUTING_KEY", "subasta.cerrada")
-COLA = os.getenv("POSTPUJA_COLA", "postpuja.subasta-cerrada")
+# Deben coincidir con Pz_subastas_cl y Pz_billetera_cl (exchange "eventos", tipo fanout).
+EXCHANGE = os.getenv("EVENTOS_EXCHANGE", "eventos")
+EVENTO = os.getenv("EVENTO_SUBASTA_CERRADA", "SubastaCerrada")
+COLA = os.getenv("POSTPUJA_COLA", "postpuja_eventos")
 
 
 def procesar_cuerpo(cuerpo: bytes, servicio: EntregaService) -> str:
@@ -44,6 +47,10 @@ class ConsumidorSubastaCerrada:
         return bool(self.conexion and not self.conexion.is_closed)
 
     async def _al_recibir(self, mensaje: AbstractIncomingMessage) -> None:
+        if mensaje.routing_key != EVENTO:
+            # Otro evento del mismo exchange (PujaSuperada, etc.): no es para Postpuja.
+            await mensaje.ack()
+            return
         try:
             # pymongo es síncrono: se corre aparte para no frenar el servidor web.
             resultado = await asyncio.to_thread(procesar_cuerpo, mensaje.body, self.servicio)
@@ -65,11 +72,11 @@ class ConsumidorSubastaCerrada:
         self.conexion = await aio_pika.connect_robust(RABBITMQ_URL)
         canal = await self.conexion.channel()
         await canal.set_qos(prefetch_count=10)
-        exchange = await canal.declare_exchange(EXCHANGE, aio_pika.ExchangeType.TOPIC, durable=True)
+        exchange = await canal.declare_exchange(EXCHANGE, aio_pika.ExchangeType.FANOUT, durable=True)
         cola = await canal.declare_queue(COLA, durable=True)
-        await cola.bind(exchange, routing_key=ROUTING_KEY)
+        await cola.bind(exchange)
         await cola.consume(self._al_recibir)
-        log.info("Escuchando %s en %s (cola %s)", ROUTING_KEY, EXCHANGE, COLA)
+        log.info("Escuchando %s en el exchange %s (cola %s)", EVENTO, EXCHANGE, COLA)
 
     async def detener(self) -> None:
         if self.conexion:
