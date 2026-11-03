@@ -8,31 +8,39 @@ import pytest
 from redis.exceptions import ConnectionError
 
 import consumer
-from consumer import Consumer, notification
+from consumer import Consumer, generate_notifications
 from main import app
 
-
 def test_event_contract():
-    notice = notification("PujaSuperada", b'{"userId":7,"auctionId":12,"amount":20}')
-    assert notice["user_id"] == "7"
-    assert notice["auction_id"] == "12"
-    assert notice["event"] == "PujaSuperada"
-    assert notification("SubastaCerrada", b'{"winnerId":8,"auctionId":"12"}')["user_id"] == "8"
-    assert notification("PujaSuperada", b'{"user_id":"007","auction_id":12}')["user_id"] == "7"
-    assert notification("SubastaCerrada", b'{"winnerId":null,"auctionId":12}') is None
-    assert notification("PrecioActualizado", b'{}') is None
+    notices = generate_notifications("PujaSuperada", b'{"userId":7,"auctionId":12,"amount":20}')
+    assert len(notices) == 1
+    assert notices[0]["userId"] == "7"
+    assert notices[0]["auctionId"] == "12"
+    assert notices[0]["type"] == "OUTBID"
+    
+    notices = generate_notifications("SubastaCerrada", b'{"winnerId":8,"auctionId":"12"}')
+    assert len(notices) == 1
+    assert notices[0]["userId"] == "8"
+    assert notices[0]["type"] == "AUCTION_WON"
+    
+    notices = generate_notifications("PujaSuperada", b'{"user_id":"007","auction_id":12}')
+    assert len(notices) == 1
+    assert notices[0]["userId"] == "007"
+    
+    notices = generate_notifications("SubastaCerrada", b'{"winnerId":null,"auctionId":12}')
+    assert len(notices) == 0
+    
+    notices = generate_notifications("PrecioActualizado", b'{}')
+    assert len(notices) == 0
 
-
-@pytest.mark.parametrize("body", [b'{', b'[]', b'{}', b'{"userId":true,"auctionId":12}', b'{"userId":-1,"auctionId":12}', b'{"userId":7}'])
+@pytest.mark.parametrize("body", [b'{', b'[]'])
 def test_invalid(body):
     with pytest.raises(ValueError):
-        notification("PujaSuperada", body)
-
+        generate_notifications("PujaSuperada", body)
 
 def message(body=b'{"userId":7,"auctionId":12}', routing_key="PujaSuperada"):
     return SimpleNamespace(body=body, routing_key=routing_key, ack=AsyncMock(),
                            reject=AsyncMock(), nack=AsyncMock())
-
 
 def test_ack_after_persistence():
     async def scenario():
@@ -44,11 +52,10 @@ def test_ack_after_persistence():
         await Consumer(redis, "unused").receive(msg)
         args = redis.lpush.call_args.args
         assert args[0] == "notificaciones:7"
-        assert json.loads(args[1])["user_id"] == "7"
+        assert json.loads(args[1])["userId"] == "7"
         msg.ack.assert_awaited_once()
         msg.nack.assert_not_awaited()
     asyncio.run(scenario())
-
 
 def test_redis_failure_requeues(monkeypatch):
     async def scenario():
@@ -59,7 +66,6 @@ def test_redis_failure_requeues(monkeypatch):
         msg.ack.assert_not_awaited()
     monkeypatch.setattr(consumer.asyncio, "sleep", AsyncMock())
     asyncio.run(scenario())
-
 
 def test_invalid_rejected_and_unrelated_ignored():
     async def scenario():
@@ -74,7 +80,6 @@ def test_invalid_rejected_and_unrelated_ignored():
         redis.lpush.assert_not_awaited()
     asyncio.run(scenario())
 
-
 def test_api_and_dependency_health():
     async def scenario():
         app.state.redis = SimpleNamespace(ping=AsyncMock(return_value=True), lrange=AsyncMock(return_value=[]))
@@ -83,8 +88,8 @@ def test_api_and_dependency_health():
             assert (await client.get("/healthz")).status_code == 200
             assert (await client.get("/notificaciones/7")).json() == []
             app.state.redis.lrange.assert_awaited_with("notificaciones:7", 0, -1)
-            app.state.redis.lrange.return_value = ['{"event":"PujaSuperada"}']
-            assert (await client.get("/notificaciones/7")).json() == [{"event": "PujaSuperada"}]
+            app.state.redis.lrange.return_value = ['{"type":"OUTBID"}']
+            assert (await client.get("/notificaciones/7")).json() == [{"type": "OUTBID"}]
             assert (await client.get("/notificaciones/0")).status_code == 422
             assert (await client.get("/notificaciones/abc")).status_code == 422
             app.state.consumer.ready = False

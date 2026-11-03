@@ -351,7 +351,7 @@ services:
   # Worker sin HTTP: espera a subastas saludable; restart supervisa su proceso.
   pz-cierre-cl:
     build:
-      context: ./services/Pz_cierre_cl
+      context: ./Pz_cierre_cl
     environment:
       SUBASTAS_SERVICE_URL: ${SUBASTAS_SERVICE_URL:-http://pz-subastas-cl:8081}
     networks:
@@ -362,7 +362,7 @@ services:
     restart: unless-stopped
   pz-notificaciones-cl:
     build:
-      context: ./services/Pz_notificaciones_cl
+      context: ./Pz_notificaciones_cl
     environment:
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
       REDIS_HOST: pz-notificaciones-db

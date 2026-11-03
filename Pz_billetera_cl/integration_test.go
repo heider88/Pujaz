@@ -34,7 +34,7 @@ func TestWalletIntegration(t *testing.T) {
 	t.Run("Fallo sin promoCode", func(t *testing.T) {
 		reqBody := models.DepositRequest{Amount: 10000.0}
 		body, _ := json.Marshal(reqBody)
-		req, _ := http.NewRequest(http.MethodPost, "/users/1/wallet", bytes.NewBuffer(body))
+		req, _ := http.NewRequest(http.MethodPost, "/users/1/wallet/deposits", bytes.NewBuffer(body))
 		
 		recorder := httptest.NewRecorder()
 		mux.ServeHTTP(recorder, req)
@@ -47,7 +47,7 @@ func TestWalletIntegration(t *testing.T) {
 	t.Run("Recarga exitosa", func(t *testing.T) {
 		reqBody := models.DepositRequest{Amount: 50000.0, PromoCode: "PROMO2026"}
 		body, _ := json.Marshal(reqBody)
-		req, _ := http.NewRequest(http.MethodPost, "/users/1/wallet", bytes.NewBuffer(body))
+		req, _ := http.NewRequest(http.MethodPost, "/users/1/wallet/deposits", bytes.NewBuffer(body))
 		
 		recorder := httptest.NewRecorder()
 		mux.ServeHTTP(recorder, req)

@@ -22,19 +22,23 @@ func (c *WalletController) HandleUsers(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	parts := strings.Split(path, "/")
 
-	if len(parts) >= 4 && parts[3] == "wallet" && r.Method == http.MethodGet {
+	// GET /users/{id}/wallet
+	if len(parts) == 4 && parts[3] == "wallet" && r.Method == http.MethodGet {
 		c.GetWallet(w, r, parts[2])
 		return
 	}
-	if len(parts) >= 4 && parts[3] == "deposits" && r.Method == http.MethodPost {
+	// POST /users/{id}/wallet/deposits
+	if len(parts) >= 5 && parts[3] == "wallet" && parts[4] == "deposits" && r.Method == http.MethodPost {
 		c.Deposit(w, r, parts[2])
 		return
 	}
-	if len(parts) >= 4 && parts[3] == "reserve" && r.Method == http.MethodPost {
+	// POST /users/{id}/wallet/reserve
+	if len(parts) >= 5 && parts[3] == "wallet" && parts[4] == "reserve" && r.Method == http.MethodPost {
 		c.Reserve(w, r, parts[2])
 		return
 	}
-	if len(parts) >= 4 && parts[3] == "refund" && r.Method == http.MethodPost {
+	// POST /users/{id}/wallet/refund
+	if len(parts) >= 5 && parts[3] == "wallet" && parts[4] == "refund" && r.Method == http.MethodPost {
 		c.Refund(w, r, parts[2])
 		return
 	}

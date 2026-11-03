@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -63,37 +64,41 @@ func InitRabbitMQ(walletSvc *WalletService) {
 				continue
 			}
 
-			// We need to route based on routing key (but we used fanout, so we need event type in payload or just parse it)
-			// Wait, the publisher uses "eventos" exchange and routingKey as the event type!
-			// If it's a fanout, the routing key is ignored.
-			// The KAN-65 says we can use direct exchange or topic.
-			// Let's check routing key.
 			eventType := d.RoutingKey
 			
-			if eventType == "PujaSuperada" {
-				userID := int(event["userId"].(float64))
-				amount := event["amount"].(float64)
-				auctionID := int(event["auctionId"].(float64))
-				_, _ = walletSvc.Refund(context.Background(), userID, amount, auctionID)
+			if eventType == "UsuarioRegistrado" {
+				userIDStr := fmt.Sprint(event["userId"])
+				userID, _ := strconv.Atoi(userIDStr)
+				if userID > 0 {
+					_, _ = walletSvc.CreateWallet(context.Background(), userID)
+				}
+			} else if eventType == "PujaSuperada" {
+				userIDStr := fmt.Sprint(event["userId"])
+				userID, _ := strconv.Atoi(userIDStr)
+				
+				amountStr := fmt.Sprint(event["amount"])
+				amount, _ := strconv.ParseFloat(amountStr, 64)
+				
+				auctionIDStr := fmt.Sprint(event["auctionId"])
+				auctionID, _ := strconv.Atoi(auctionIDStr)
+				
+				if userID > 0 {
+					_, _ = walletSvc.Refund(context.Background(), userID, amount, auctionID)
+				}
 			} else if eventType == "SubastaCerrada" {
 				if event["winnerId"] != nil {
-					// Wait, winnerId might be float64 if sent as int from publisher?
-					// Ah, in publisher: "winnerId": a.WinnerID (which is *int), but it will be serialized as number.
-					// Let's parse safely
-					var winnerID int
-					switch v := event["winnerId"].(type) {
-					case float64:
-						winnerID = int(v)
-					case string:
-						winnerID, _ = strconv.Atoi(v)
-					}
+					winnerIDStr := fmt.Sprint(event["winnerId"])
+					winnerID, _ := strconv.Atoi(winnerIDStr)
 					
-					amount := event["amount"].(float64)
-					// Wait, we need auctionId as well to pass to Charge (cobrar)
-					auctionIDStr := event["auctionId"].(string)
+					amountStr := fmt.Sprint(event["amount"])
+					amount, _ := strconv.ParseFloat(amountStr, 64)
+					
+					auctionIDStr := fmt.Sprint(event["auctionId"])
 					auctionID, _ := strconv.Atoi(auctionIDStr)
 					
-					_, _ = walletSvc.Charge(context.Background(), winnerID, amount, auctionID)
+					if winnerID > 0 {
+						_, _ = walletSvc.Charge(context.Background(), winnerID, amount, auctionID)
+					}
 				}
 			}
 			d.Ack(false)
