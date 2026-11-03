@@ -340,6 +340,28 @@ services:
       pz-subastas-cl:
         condition: service_healthy
     restart: unless-stopped
+  pz-notificaciones-cl:
+    build:
+      context: ./services/Pz_notificaciones_cl
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
+      REDIS_HOST: pz-notificaciones-db
+      REDIS_PORT: '6379'
+    networks:
+      - backend
+      - data
+    depends_on:
+      pz-eventos-mq:
+        condition: service_healthy
+      pz-notificaciones-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
 networks:
   public:
     driver: bridge
