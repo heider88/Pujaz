@@ -329,6 +329,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  pz-cierre-cl:
+    build:
+      context: ./services/Pz_cierre_cl
+    environment:
+      SUBASTAS_SERVICE_URL: ${SUBASTAS_SERVICE_URL:-http://pz-subastas-cl:8081}
+    networks:
+      - backend
+    depends_on:
+      pz-subastas-cl:
+        condition: service_healthy
+    restart: unless-stopped
 networks:
   public:
     driver: bridge
