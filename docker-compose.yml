@@ -222,12 +222,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  pz-notificaciones-db:
+    image: redis:alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - notificaciones_data:/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   pz-eventos-mq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
+    - 5672:5672
     - 15672:15672
     networks:
     - backend
@@ -235,8 +248,7 @@ services:
       test:
       - CMD
       - rabbitmq-diagnostics
-      - -q
-      - ping
+      - check_running
       interval: 10s
       timeout: 5s
       retries: 5
@@ -318,10 +330,13 @@ services:
       timeout: 5s
       retries: 5
 networks:
-  public: null
+  public:
+    driver: bridge
   backend:
+    driver: bridge
     internal: true
   data:
+    driver: bridge
     internal: true
 volumes:
   usuarios_data: null
@@ -329,3 +344,4 @@ volumes:
   billetera_data: null
   mongo_data: null
   postpuja_data: null
+  notificaciones_data: null
