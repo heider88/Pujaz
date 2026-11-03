@@ -1,0 +1,117 @@
+'use client'
+// Crear cuenta (mutation register). Al terminar, la sesión queda iniciada.
+import { useMutation } from '@apollo/client/react'
+import { useState, type FormEvent } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { codigoError } from '../api/errores'
+import { REGISTER } from '../api/usuarios'
+import { useSesion } from '../session/SessionContext'
+
+const REGLA_NOMBRE = /^[A-Za-záéíóúÁÉÍÓÚñÑ\s]{3,50}$/
+const REGLA_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+
+function mensajeDeError(error: unknown): string {
+  switch (codigoError(error)) {
+    case 'EMAIL_TAKEN':
+      return 'Ya existe una cuenta con ese correo.'
+    case 'BAD_USER_INPUT':
+      return 'Revisa los datos: el correo debe ser válido y la contraseña de al menos 8 caracteres.'
+    default:
+      return 'No se pudo crear la cuenta. Intenta de nuevo en un momento.'
+  }
+}
+
+export function FormularioRegistro() {
+  const { usuario, iniciarSesion } = useSesion()
+  const router = useRouter()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [registrar, { loading }] = useMutation(REGISTER)
+
+  if (usuario) {
+    return (
+      <section>
+        <h1>Crear cuenta</h1>
+        <p>Ya iniciaste sesión como {usuario.name}.</p>
+        <p>
+          <Link href="/">Ir a las subastas</Link>
+        </p>
+      </section>
+    )
+  }
+
+  async function enviar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    setError(null)
+
+    if (!REGLA_NOMBRE.test(name.trim())) {
+      setError('El nombre debe tener entre 3 y 50 caracteres y solo contener letras y espacios.')
+      return
+    }
+
+    if (!REGLA_PASSWORD.test(password)) {
+      setError('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.')
+      return
+    }
+
+    try {
+      const { data } = await registrar({
+        variables: { input: { name: name.trim(), email: email.trim(), password } },
+      })
+      if (data) {
+        router.replace('/')
+        iniciarSesion(data.register)
+      }
+    } catch (e) {
+      setError(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <section className="pagina-angosta">
+      <h1>Crear cuenta</h1>
+      <form className="formulario" onSubmit={enviar}>
+        <label htmlFor="registro-nombre">Nombre</label>
+        <input
+          id="registro-nombre"
+          autoComplete="name"
+          required
+          value={name}
+          onChange={(evento) => setName(evento.target.value)}
+        />
+        <label htmlFor="registro-email">Correo</label>
+        <input
+          id="registro-email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(evento) => setEmail(evento.target.value)}
+        />
+        <label htmlFor="registro-password">Contraseña (mínimo 8 caracteres, con mayúscula y número)</label>
+        <input
+          id="registro-password"
+          type="password"
+          autoComplete="new-password"
+          required
+          value={password}
+          onChange={(evento) => setPassword(evento.target.value)}
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? 'Creando…' : 'Crear cuenta'}
+        </button>
+        {error && (
+          <p role="alert" className="mensaje-error">
+            {error}
+          </p>
+        )}
+      </form>
+      <p>
+        ¿Ya tienes cuenta? <Link href="/login">Inicia sesión</Link>
+      </p>
+    </section>
+  )
+}

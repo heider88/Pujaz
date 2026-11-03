@@ -38,5 +38,5 @@ jobs:
 
     - name: Ejecutar Pruebas de Migraciones
       run: |
-        cd ms-transaccional
+        cd Pz_transaccional_cl
         go test -v ./...

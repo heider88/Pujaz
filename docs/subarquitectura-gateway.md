@@ -9,6 +9,7 @@ Está escrito en **Node.js + TypeScript** con **GraphQL Yoga** y se organiza en 
 ## Diagrama
 
 ```mermaid
+%%{init: {'themeVariables': { 'background': '#ffffff' }}}%%
 graph TB
     Nginx["Nginx<br/>reverse proxy /graphql"]
 
@@ -80,6 +81,7 @@ Para desarrollar y probar sin los microservicios, cada cliente HTTP tiene una ve
 ## Flujo de una puja en tiempo real
 
 ```mermaid
+%%{init: {'themeVariables': { 'background': '#ffffff' }}}%%
 sequenceDiagram
     participant A as SPA de quien puja
     participant B as SPA de quien observa

@@ -209,6 +209,40 @@ Errores: 400 `BAD_USER_INPUT` (`name` vacío, `basePrice` <= 0).
 
 ---
 
+## 2b. MS postpuja (Pz_postpuja_cl, MongoDB) · entrega 2
+
+Dueño de: entregas de las piezas ganadas. Las crea al recibir el evento `SubastaCerrada` del broker
+(no hay endpoint para crearlas). Detalle del evento en `Pz_postpuja_cl/README.md`.
+
+### Objeto Delivery
+
+```json
+{
+  "id": "6726a1f0c3b2a90012ab0001",
+  "auctionId": "a1",
+  "itemId": "64f1c0aa9b1e8a0012ab34cd",
+  "winnerId": "7",
+  "amount": 150000.00,
+  "status": "PENDING",
+  "createdAt": "2026-11-02T20:00:00Z",
+  "confirmedAt": null
+}
+```
+
+**GET `/deliveries?winnerId={userId}`** — entregas del usuario, de la más reciente a la más antigua.
+- 200: `[ Delivery, ... ]` (puede ser `[]`). Errores: 400 `BAD_USER_INPUT` si falta `winnerId`.
+
+**POST `/deliveries/{deliveryId}/confirm`** — el ganador confirma que recibió la pieza.
+
+```json
+// Request (el Gateway pone el userId del JWT)
+{ "winnerId": "7" }
+// 200: objeto Delivery con status CONFIRMED y confirmedAt
+```
+Errores: 404 `NOT_FOUND` (no existe o no es de ese usuario), 400 `BAD_USER_INPUT` (ya estaba confirmada).
+
+---
+
 ## 3. Qué endpoint usa cada cosa del schema
 
 ### Queries
@@ -221,6 +255,7 @@ Errores: 400 `BAD_USER_INPUT` (`name` vacío, `basePrice` <= 0).
 | `auction(itemId)` | MS transaccional `GET /auctions?itemIds={itemId}` (lista vacía -> `null`) + MS catálogo `GET /items/{itemId}` para `Auction.item` |
 | `me` | MS transaccional `GET /users/{userId}` |
 | `wallet` | MS transaccional `GET /users/{userId}/wallet` + (si piden `movements.auction`) `GET /auctions?ids=` |
+| `myDeliveries` | MS postpuja `GET /deliveries?winnerId={userId}` + (si piden `auction`) `GET /auctions?ids=` |
 
 ### Mutations
 
@@ -233,6 +268,7 @@ Errores: 400 `BAD_USER_INPUT` (`name` vacío, `basePrice` <= 0).
 | `placeBid` | MS transaccional `POST /auctions/{auctionId}/bids` -> luego publica `auctionUpdated` |
 | `deposit` | MS transaccional `POST /users/{userId}/wallet/deposits` |
 | `createItem` | MS catálogo `POST /items` -> luego MS transaccional `POST /auctions` |
+| `confirmDelivery(id)` | MS postpuja `POST /deliveries/{id}/confirm` con `{ "winnerId": userId }` |
 
 ### Subscription
 

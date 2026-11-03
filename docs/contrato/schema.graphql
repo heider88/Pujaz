@@ -1,9 +1,15 @@
-# Contrato de API · Pujaz · Parte GraphQL (SPA <-> Gateway)
-# Responsable: Catalina · La parte REST (Gateway <-> microservicios) está en rest.md (David)
+# Contrato de API · Pujaz · Parte GraphQL (front-ends <-> Gateway)
+# Versión 3 (entrega 2) · Responsable: Catalina
+# La parte REST (Gateway <-> microservicios) está en rest.md
 #
 # Autenticación: las operaciones marcadas con "Requiere JWT" esperan el encabezado
 #   Authorization: Bearer <token>
 # Si falta o es inválido, responden un error con extensions.code = "UNAUTHENTICATED".
+#
+# Cambios de la v3:
+#   - Entregas (Pz_postpuja_cl): tipo Delivery, query myDeliveries y mutación confirmDelivery.
+#   - Notificaciones (Pz_notificaciones_cl): tipo Notification y query myNotifications.
+#   - No hay códigos de error nuevos.
 
 scalar DateTime
 
@@ -13,6 +19,7 @@ type User {
   id: ID!
   name: String!
   email: String!
+  role: String!
   createdAt: DateTime!
   # La contraseña nunca se expone
 }
@@ -83,11 +90,45 @@ type WalletMovement {
   createdAt: DateTime!
 }
 
+# ---------- Entregas (v3 · viene de Pz_postpuja_cl) ----------
+
+enum DeliveryStatus {
+  PENDING     # Se creó al cerrar la subasta (evento SubastaCerrada); el ganador aún no confirma
+  CONFIRMED   # El ganador confirmó que recibió la pieza
+}
+
+type Delivery {
+  id: ID!
+  auction: Auction!         # Subasta ganada: de ahí salen la pieza, sus fotos y el precio
+  amount: Float!            # Precio final que pagó el ganador
+  status: DeliveryStatus!
+  createdAt: DateTime!
+  confirmedAt: DateTime     # null mientras esté PENDING
+}
+
+# ---------- Notificaciones (v3 · viene de Pz_notificaciones_cl) ----------
+
+enum NotificationType {
+  WELCOME        # Evento UsuarioRegistrado
+  OUTBID         # Evento PujaSuperada: alguien superó tu puja
+  AUCTION_WON    # Evento SubastaCerrada: ganaste la subasta
+  AUCTION_LOST   # Evento SubastaCerrada: pujaste pero no ganaste
+}
+
+type Notification {
+  id: ID!
+  type: NotificationType!
+  message: String!          # Texto listo para mostrar en pantalla
+  auction: Auction          # Subasta relacionada (null en WELCOME)
+  createdAt: DateTime!
+}
+
 # ---------- Entradas ----------
 
 input RegisterInput {
   name: String!
   email: String!
+  role: String!
   password: String!
 }
 
@@ -115,6 +156,8 @@ type Query {
   auction(itemId: ID!): Auction            # Estado de la subasta de un ítem
   me: User                                 # Requiere JWT
   wallet: Wallet!                          # Requiere JWT · billetera del usuario autenticado
+  myDeliveries: [Delivery!]!               # Requiere JWT · entregas de las subastas que ganó el usuario, de la más reciente a la más antigua
+  myNotifications: [Notification!]!        # Requiere JWT · notificaciones del usuario, de la más reciente a la más antigua
 }
 
 # ---------- Escritura ----------
@@ -132,6 +175,10 @@ type Mutation {
   deposit(amount: Float!, promoCode: String!): Wallet!                         # Requiere JWT · Error: BAD_USER_INPUT si amount <= 0 o promoCode es inválido
 
   createItem(input: CreateItemInput!): Item!               # Requiere JWT · Error: BAD_USER_INPUT
+
+  confirmDelivery(id: ID!): Delivery!                      # Requiere JWT · solo el ganador confirma su entrega
+  # Errores: NOT_FOUND (no existe o no es del usuario: no se revela que existe),
+  #          BAD_USER_INPUT (la entrega ya estaba confirmada)
 }
 
 # ---------- Tiempo real (WebSocket, protocolo graphql-ws) ----------

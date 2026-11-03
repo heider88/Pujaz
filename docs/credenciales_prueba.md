@@ -1,6 +1,6 @@
 # Credenciales y datos de prueba
 
-Estos datos se cargan solos la primera vez que se levanta el sistema (migraciones de PostgreSQL y `mongo-init/init.js`). Para volver a ellos: `docker compose down -v` y `docker compose up --build`.
+Estos datos se cargan solos la primera vez que se levanta el sistema (migraciones de PostgreSQL y `Pz_catalogo_db/init.js`). Para volver a ellos: `docker compose down -v` y `docker compose up --build`.
 
 ## Usuarios
 

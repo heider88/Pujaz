@@ -1,27 +1,57 @@
 services:
-  frontend-spa:
-    build:
-      context: ./frontend-spa
+  pz-web-proxy:
+    image: nginx:stable-alpine
     ports:
-      - "${NGINX_PORT:-8080}:80"
+    - ${NGINX_PORT:-8080}:80
     environment:
       GATEWAY_PORT: ${PORT:-4000}
       NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$$
     volumes:
-      - ./docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
-    networks: [public, backend]
+    - ./docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    networks:
+    - public
+    - backend
     depends_on:
-      gateway-bff:
+      pz-web-fe:
+        condition: service_healthy
+      pz-api-ag:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      test:
+      - CMD
+      - wget
+      - -q
+      - -O
+      - /dev/null
+      - http://127.0.0.1/healthz
       interval: 10s
       timeout: 5s
       retries: 5
-
-  gateway-bff:
+  pz-web-fe:
     build:
-      context: ./gateway-bff
+      context: ./Pz_web_fe
+    environment:
+      GATEWAY_URL: http://pz-api-ag:${PORT:-4000}/graphql
+    networks:
+    - backend
+    depends_on:
+      pz-api-ag:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - -q
+      - -O
+      - /dev/null
+      - http://127.0.0.1:3000/healthz
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+  pz-api-ag:
+    build:
+      context: ./Pz_api_ag
       additional_contexts:
         contrato: ./docs/contrato
     environment:
@@ -31,88 +61,271 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET con al menos 32 caracteres}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       USE_MOCKS: ${USE_MOCKS:-false}
-      MS_TRANSACCIONAL_URL: ${MS_TRANSACCIONAL_URL:-http://ms-transaccional:8080}
-      MS_CATALOGO_URL: ${MS_CATALOGO_URL:-http://ms-catalogo:8000}
-    networks: [backend]
+      MS_CATALOGO_URL: ${MS_CATALOGO_URL:-http://pz-catalogo-cl:8000}
+      MS_SUBASTAS_URL: ${MS_SUBASTAS_URL:-http://pz-subastas-cl:8081}
+      MS_BILLETERA_URL: ${MS_BILLETERA_URL:-http://pz-billetera-cl:8082}
+    networks:
+    - backend
     depends_on:
-      ms-transaccional:
+      pz-catalogo-cl:
         condition: service_healthy
-      ms-catalogo:
+      pz-subastas-cl:
+        condition: service_healthy
+      pz-billetera-cl:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/graphql?query=%7B__typename%7D').then(async r => { const b = await r.json(); process.exit(r.ok && b.data?.__typename === 'Query' ? 0 : 1); }).catch(() => process.exit(1))"]
+      test:
+      - CMD
+      - node
+      - -e
+      - 'fetch(''http://127.0.0.1:'' + process.env.PORT + ''/graphql?query=%7B__typename%7D'').then(async
+        r => { const b = await r.json(); process.exit(r.ok && b.data?.__typename ===
+        ''Query'' ? 0 : 1); }).catch(() => process.exit(1))'
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
-
-  postgres-db:
+  pz-usuarios-db:
     image: postgres:15
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-pujaz_transaccional}
+      POSTGRES_DB: ${POSTGRES_DB:-pujaz_usuarios}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks: [data]
+    - usuarios_data:/var/lib/postgresql/data
+    - ./Pz_usuarios_cl/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+    - data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
-
-  mongo-db:
+  pz-subastas-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pujaz_subastas}
+    volumes:
+    - subastas_data:/var/lib/postgresql/data
+    - ./Pz_subastas_cl/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+    - data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  pz-billetera-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pujaz_billetera}
+    volumes:
+    - billetera_data:/var/lib/postgresql/data
+    - ./Pz_billetera_cl/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+    - data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  pz-catalogo-db:
     image: mongo:6
     volumes:
-      - mongo_data:/data/db
-      - ./mongo-init/init.js:/docker-entrypoint-initdb.d/init.js:ro
-    networks: [data]
+    - mongo_data:/data/db
+    - ./Pz_catalogo_db/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+    - data
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "if (db.adminCommand({ping: 1}).ok !== 1) quit(1)"]
+      test:
+      - CMD
+      - mongosh
+      - --quiet
+      - --eval
+      - 'if (db.adminCommand({ping: 1}).ok !== 1) quit(1)'
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-
-  ms-catalogo:
+  pz-catalogo-cl:
     build:
-      context: ./ms-catalogo
+      context: ./Pz_catalogo_cl
     environment:
-      MONGO_URI: ${MONGO_URI:-mongodb://mongo-db:27017}
-    networks: [backend, data]
+      MONGO_URI: ${MONGO_URI:-mongodb://pz-catalogo-db:27017}
+    networks:
+    - backend
+    - data
     depends_on:
-      mongo-db:
+      pz-catalogo-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health',
+        timeout=3)
       interval: 10s
       timeout: 5s
       retries: 5
-
-  ms-transaccional:
-    build:
-      context: ./ms-transaccional
-    environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB:-pujaz_transaccional}?sslmode=disable
-      PORT: 8080
-    networks: [backend, data]
-    depends_on:
-      postgres-db:
-        condition: service_healthy
+  pz-postpuja-db:
+    image: mongo:6
+    volumes:
+    - postpuja_data:/data/db
+    networks:
+    - data
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      test:
+      - CMD
+      - mongosh
+      - --quiet
+      - --eval
+      - 'if (db.adminCommand({ping: 1}).ok !== 1) quit(1)'
       interval: 10s
       timeout: 5s
       retries: 5
-
+      start_period: 30s
+  pz-postpuja-cl:
+    build:
+      context: ./Pz_postpuja_cl
+    environment:
+      MONGO_URI: mongodb://pz-postpuja-db:27017
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
+    networks:
+    - backend
+    - data
+    depends_on:
+      pz-postpuja-db:
+        condition: service_healthy
+      pz-eventos-mq:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health',
+        timeout=3)
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  pz-eventos-mq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+    - 15672:15672
+    networks:
+    - backend
+    healthcheck:
+      test:
+      - CMD
+      - rabbitmq-diagnostics
+      - -q
+      - ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  pz-subastas-cl:
+    build:
+      context: ./Pz_subastas_cl
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@pz-subastas-db:5432/${POSTGRES_DB:-pujaz_subastas}?sslmode=disable
+      PORT: '8081'
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
+    networks:
+    - backend
+    - data
+    depends_on:
+      pz-subastas-db:
+        condition: service_healthy
+      pz-eventos-mq:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - -q
+      - -O
+      - /dev/null
+      - http://127.0.0.1:8081/health
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  pz-usuarios-cl:
+    build:
+      context: ./Pz_usuarios_cl
+      dockerfile: Dockerfile
+    environment:
+      PORT: '8080'
+      POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pz-usuarios-db:5432/pujaz_usuarios
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
+    networks:
+      - backend
+      - data
+    depends_on:
+      pz-usuarios-db:
+        condition: service_healthy
+      pz-eventos-mq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+  pz-billetera-cl:
+    build:
+      context: ./Pz_billetera_cl
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@pz-billetera-db:5432/${POSTGRES_DB:-pujaz_billetera}?sslmode=disable
+      PORT: '8082'
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
+    networks:
+    - backend
+    - data
+    depends_on:
+      pz-billetera-db:
+        condition: service_healthy
+      pz-eventos-mq:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - -q
+      - -O
+      - /dev/null
+      - http://127.0.0.1:8082/health
+      interval: 10s
+      timeout: 5s
+      retries: 5
 networks:
-  public:
+  public: null
   backend:
     internal: true
   data:
     internal: true
-
 volumes:
-  postgres_data:
-  mongo_data:
+  usuarios_data: null
+  subastas_data: null
+  billetera_data: null
+  mongo_data: null
+  postpuja_data: null
