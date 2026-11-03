@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.pujaz.usuarios.UserIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.470 s -- in com.pujaz.usuarios.UserIntegrationTest
