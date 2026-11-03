@@ -1,7 +1,7 @@
 // Menú: cambia según haya sesión o no, marca la página actual y permite cerrar sesión.
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { navegacion } from '../test/navegacion'
+import { cookieSesion, navegacion } from '../test/navegacion'
 import { ana, renderConSesion } from '../test/render'
 import { Encabezado } from './Encabezado'
 
@@ -26,7 +26,7 @@ describe('Encabezado', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
     expect(await screen.findByRole('link', { name: 'Iniciar sesión' })).toBeInTheDocument()
-    expect(localStorage.getItem('pujaz_token')).toBeNull()
+    expect(cookieSesion.borrar).toHaveBeenCalled()
     expect(navegacion.push).toHaveBeenCalledWith('/')
   })
 })

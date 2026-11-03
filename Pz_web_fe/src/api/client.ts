@@ -7,7 +7,6 @@
 // Las páginas que se dibujan en el servidor (listado y detalle) no usan este cliente:
 // piden sus datos con src/lib/gateway.ts.
 import { ApolloClient, ApolloLink, HttpLink, InMemoryCache } from '@apollo/client'
-import { SetContextLink } from '@apollo/client/link/context'
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions'
 import { getMainDefinition } from '@apollo/client/utilities'
 import { OperationTypeNode } from 'graphql'
@@ -28,13 +27,12 @@ export function crearCliente(): ApolloClient {
     return new ApolloClient({ ssrMode: true, link: ApolloLink.empty(), cache: new InMemoryCache() })
   }
 
+  // El JWT va en la cookie httpOnly: el navegador la envía sola en cada petición a /graphql.
   const httpLink = new HttpLink({ uri: '/graphql' })
-
-
 
   const wsLink = new GraphQLWsLink(createClient({ url: urlWebSocket() }))
 
-  // Si la operación es una subscription, va por WebSocket; si no, por HTTP con el JWT.
+  // Si la operación es una subscription, va por WebSocket; si no, por HTTP (con la cookie de sesión).
   const link = ApolloLink.split(
     ({ query }) => {
       const definition = getMainDefinition(query)

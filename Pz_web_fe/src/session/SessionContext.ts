@@ -5,10 +5,12 @@ import type { AuthPayload, Usuario } from '../api/usuarios'
 
 export interface Sesion {
   usuario: Usuario | null
-  // true mientras se confirma con el Gateway el token guardado.
+  // Se mantiene por compatibilidad: con la cookie, el servidor ya sabe quién es al dibujar.
   cargando: boolean
   iniciarSesion: (datos: AuthPayload) => void
   cerrarSesion: () => void
+  // Después de editar el perfil, para que el menú muestre el nombre nuevo sin recargar.
+  actualizarUsuario: (usuario: Usuario) => void
 }
 
 export const SessionContext = createContext<Sesion | null>(null)

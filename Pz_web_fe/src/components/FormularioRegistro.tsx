@@ -5,7 +5,7 @@ import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { codigoError } from '../api/errores'
-import { REGISTER } from '../api/usuarios'
+import { REGISTER, type Rol } from '../api/usuarios'
 import { useSesion } from '../session/SessionContext'
 
 const REGLA_NOMBRE = /^[A-Za-záéíóúÁÉÍÓÚñÑ\s]{3,50}$/
@@ -28,6 +28,7 @@ export function FormularioRegistro() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rol, setRol] = useState<Rol>('comprador')
   const [error, setError] = useState<string | null>(null)
   const [registrar, { loading }] = useMutation(REGISTER)
 
@@ -59,7 +60,7 @@ export function FormularioRegistro() {
 
     try {
       const { data } = await registrar({
-        variables: { input: { name: name.trim(), email: email.trim(), password } },
+        variables: { input: { name: name.trim(), email: email.trim(), password, role: rol } },
       })
       if (data) {
         router.replace('/')
@@ -100,6 +101,35 @@ export function FormularioRegistro() {
           value={password}
           onChange={(evento) => setPassword(evento.target.value)}
         />
+        <fieldset className="selector-rol">
+          <legend>¿Para qué vas a usar Pujaz?</legend>
+          <label className={rol === 'comprador' ? 'opcion-rol opcion-rol--activa' : 'opcion-rol'}>
+            <input
+              type="radio"
+              name="rol"
+              value="comprador"
+              checked={rol === 'comprador'}
+              onChange={() => setRol('comprador')}
+            />
+            <span>
+              <strong>Comprar</strong>
+              <small>Pujar por piezas y recargar tu billetera.</small>
+            </span>
+          </label>
+          <label className={rol === 'vendedor' ? 'opcion-rol opcion-rol--activa' : 'opcion-rol'}>
+            <input
+              type="radio"
+              name="rol"
+              value="vendedor"
+              checked={rol === 'vendedor'}
+              onChange={() => setRol('vendedor')}
+            />
+            <span>
+              <strong>Vender</strong>
+              <small>Además, publicar piezas para subastar.</small>
+            </span>
+          </label>
+        </fieldset>
         <button type="submit" disabled={loading}>
           {loading ? 'Creando…' : 'Crear cuenta'}
         </button>

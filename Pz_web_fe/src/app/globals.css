@@ -475,8 +475,13 @@ textarea:focus-visible {
   border-radius: calc(var(--radio) - 2px);
 }
 
+/* En el detalle la foto se ve completa, sin recortes: si es vertical (como un reloj),
+   quedan bandas a los lados en vez de cortarle la parte de arriba y de abajo. */
 .imagen-lote--grande {
-  aspect-ratio: 3 / 2;
+  aspect-ratio: 4 / 3;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #f4f5f7;
 }
 
 .miniaturas {
@@ -1136,6 +1141,56 @@ section.pagina-angosta h2 {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--tinta);
+}
+
+/* ---------- Registro: comprar o vender ---------- */
+
+.selector-rol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0 4px;
+  padding: 0;
+  border: 0;
+}
+
+.selector-rol legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 0.95rem;
+  color: var(--texto);
+}
+
+.opcion-rol {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  cursor: pointer;
+}
+
+.opcion-rol--activa {
+  border-color: var(--laton);
+  box-shadow: inset 0 0 0 1px var(--laton);
+}
+
+.opcion-rol input {
+  margin-top: 4px;
+  accent-color: var(--tinta);
+}
+
+.opcion-rol strong {
+  display: block;
+  color: var(--tinta);
+}
+
+.opcion-rol small {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--gris);
+  line-height: 1.35;
 }
 
 /* ---------- Publicar ---------- */
