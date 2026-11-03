@@ -1,17 +1,33 @@
 package com.pujaz.usuarios.services;
 
+import com.pujaz.usuarios.dto.LoginRequest;
+import com.pujaz.usuarios.dto.RegisterRequest;
+import com.pujaz.usuarios.dto.UpdateUserRequest;
+import com.pujaz.usuarios.dto.UserResponse;
 import com.pujaz.usuarios.models.User;
 import com.pujaz.usuarios.repositories.UserRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.util.Optional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserServiceImpl(UserRepository userRepository) {
+    // Regla: mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula y 1 número
+    private static final Pattern PASSWORD_PATTERN = 
+        Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$");
+
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -20,12 +36,94 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Optional<User> findById(Long id) {
-        return userRepository.findById(id);
+    public UserResponse register(RegisterRequest request) {
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "BAD_USER_INPUT: El nombre es obligatorio");
+        }
+        if (request.getEmail() == null || !request.getEmail().contains("@")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "BAD_USER_INPUT: Correo electrónico inválido");
+        }
+        if (request.getPassword() == null || !PASSWORD_PATTERN.matcher(request.getPassword()).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "BAD_USER_INPUT: La contraseña debe tener mínimo 8 caracteres, incluir al menos una mayúscula, una minúscula y un número");
+        }
+
+        if (userRepository.existsByEmail(request.getEmail().trim().toLowerCase())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "USER_ALREADY_EXISTS: El correo ya está registrado");
+        }
+
+        String role = (request.getRole() != null && !request.getRole().trim().isEmpty()) 
+            ? request.getRole().trim().toLowerCase() : "comprador";
+
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+        User user = new User(
+            request.getName().trim(),
+            request.getEmail().trim().toLowerCase(),
+            encodedPassword,
+            role
+        );
+
+        User saved = userRepository.save(user);
+        return new UserResponse(saved);
     }
 
     @Override
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
+    public UserResponse login(LoginRequest request) {
+        if (request.getEmail() == null || request.getPassword() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "BAD_USER_INPUT: Correo y contraseña requeridos");
+        }
+
+        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS: Credenciales inválidas"));
+
+        if (!"activa".equalsIgnoreCase(user.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "ACCOUNT_INACTIVE: La cuenta está inactiva");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS: Credenciales inválidas");
+        }
+
+        return new UserResponse(user);
+    }
+
+    @Override
+    public UserResponse getProfile(Long id) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND: Usuario no encontrado"));
+        return new UserResponse(user);
+    }
+
+    @Override
+    public UserResponse updateProfile(Long id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND: Usuario no encontrado"));
+
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            user.setName(request.getName().trim());
+        }
+        if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
+            user.setRole(request.getRole().trim().toLowerCase());
+        }
+
+        User updated = userRepository.save(user);
+        return new UserResponse(updated);
+    }
+
+    @Override
+    public void deleteUser(Long id) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND: Usuario no encontrado"));
+        
+        user.setStatus("inactiva");
+        userRepository.save(user);
+    }
+
+    @Override
+    public List<UserResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+            .map(UserResponse::new)
+            .collect(Collectors.toList());
     }
 }
