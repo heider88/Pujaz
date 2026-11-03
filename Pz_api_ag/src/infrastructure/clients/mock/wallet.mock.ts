@@ -40,9 +40,19 @@ function seedWallets(now: number): Wallet[] {
   ];
 }
 
+// Las reservas de esos movimientos: la de Ana sigue activa (va ganando) y la de Luis se liberó
+// cuando Ana lo superó. Las pujas 54 y 55 de auction.mock.ts apuntan a ellas.
+function seedReservations(now: number): Reservation[] {
+  const at = (hoursAgo: number) => new Date(now - hoursAgo * HOUR).toISOString();
+  return [
+    { id: '301', userId: '7', auctionId: '12', amount: 120000, status: 'ACTIVE', createdAt: at(1) },
+    { id: '303', userId: '9', auctionId: '12', amount: 110000, status: 'RELEASED', createdAt: at(2) },
+  ];
+}
+
 export class MockWalletClient implements WalletClient {
   private readonly wallets: Wallet[] = seedWallets(Date.now());
-  private readonly reservations: Reservation[] = [];
+  private readonly reservations: Reservation[] = seedReservations(Date.now());
   private nextMovementId = 1000;
   private nextReservationId = 2000;
 
@@ -72,7 +82,9 @@ export class MockWalletClient implements WalletClient {
     if (wallet.available < amount) {
       throw new AppError('INSUFFICIENT_FUNDS', 'No tienes saldo disponible suficiente.');
     }
-    this.reserveForBid(userId, auctionId, amount);
+    wallet.available -= amount;
+    wallet.reserved += amount;
+    wallet.movements.unshift(this.movement('RESERVE', amount, auctionId));
     const reservation: Reservation = {
       id: String(this.nextReservationId++),
       userId,
@@ -100,20 +112,7 @@ export class MockWalletClient implements WalletClient {
     return structuredClone(reservation);
   }
 
-  // Solo del cliente falso: los usa MockAuctionClient al pujar, como hace hoy el MS en su transacción.
-  // Desaparecen cuando la puja pase a ser la Saga del Gateway (KAN-78).
-  available(userId: string): number {
-    return this.findOrCreate(userId).available;
-  }
-
-  reserveForBid(userId: string, auctionId: string, amount: number): void {
-    const wallet = this.findOrCreate(userId);
-    wallet.available -= amount;
-    wallet.reserved += amount;
-    wallet.movements.unshift(this.movement('RESERVE', amount, auctionId));
-  }
-
-  refund(userId: string, auctionId: string, amount: number): void {
+  private refund(userId: string, auctionId: string, amount: number): void {
     const wallet = this.findOrCreate(userId);
     wallet.reserved -= amount;
     wallet.available += amount;

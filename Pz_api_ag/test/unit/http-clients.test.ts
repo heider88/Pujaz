@@ -29,7 +29,8 @@ const MS_AUCTION = {
   endsAt: '2026-10-14T00:22:22Z',
   status: 'OPEN',
 };
-// Ejemplos de rest.md v3 (§2, §5 y §6).
+// Ejemplos de rest.md v3 (§2, §3.2, §5 y §6).
+const NEW_BID = { userId: '4', userName: 'Prueba', amount: 150, reservationId: '305' };
 const RESERVATION = { id: '305', userId: '7', auctionId: '12', amount: 130000, status: 'ACTIVE', createdAt: '2026-10-09T14:10:00Z' };
 const DELIVERY = {
   id: '6726a1f0c3b2a90012ab0001',
@@ -228,22 +229,37 @@ describe('HttpAuctionClient', () => {
     await expect(new HttpAuctionClient(http()).getAuctionsByIds(['1'])).rejects.toMatchObject({ code: 'INTERNAL' });
   });
 
-  it('placeBid envía userId y amount, y valida la puja y la subasta que responde el MS', async () => {
-    willRespond(201, { bid: MS_AUCTION.winningBid, auction: MS_AUCTION });
-    const placed = await new HttpAuctionClient(http()).placeBid('1', '4', 150);
-    expect(placed).toEqual({ bid: MS_AUCTION.winningBid, auction: MS_AUCTION });
+  it('placeBid envía userId, userName, amount y reservationId, y valida la respuesta del MS', async () => {
+    willRespond(201, { bid: MS_AUCTION.winningBid, auction: MS_AUCTION, releasedReservationId: null });
+    const placed = await new HttpAuctionClient(http()).placeBid('1', NEW_BID);
+    expect(placed).toEqual({ bid: MS_AUCTION.winningBid, auction: MS_AUCTION, releasedReservationId: null });
     expect(lastUrl()).toBe('http://ms/auctions/1/bids');
-    expect(fetchFn.mock.calls[0]![1]).toMatchObject({ method: 'POST', body: '{"userId":"4","amount":150}' });
+    expect(fetchFn.mock.calls[0]![1]).toMatchObject({
+      method: 'POST',
+      body: '{"userId":"4","userName":"Prueba","amount":150,"reservationId":"305"}',
+    });
+  });
+
+  it('placeBid conserva releasedReservationId cuando el usuario subió su propia puja', async () => {
+    willRespond(201, { bid: MS_AUCTION.winningBid, auction: MS_AUCTION, releasedReservationId: '301' });
+    await expect(new HttpAuctionClient(http()).placeBid('1', NEW_BID)).resolves.toMatchObject({
+      releasedReservationId: '301',
+    });
+  });
+
+  it('una respuesta de placeBid sin releasedReservationId no cumple el contrato v3: INTERNAL', async () => {
+    willRespond(201, { bid: MS_AUCTION.winningBid, auction: MS_AUCTION });
+    await expect(new HttpAuctionClient(http()).placeBid('1', NEW_BID)).rejects.toMatchObject({ code: 'INTERNAL' });
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('falta PlacedBid.releasedReservationId'));
   });
 
   it.each([
     [409, 'BID_TOO_LOW'],
     [409, 'AUCTION_CLOSED'],
-    [422, 'INSUFFICIENT_FUNDS'],
     [404, 'NOT_FOUND'],
   ])('placeBid conserva el error %s %s del MS', async (status, code) => {
     willRespond(status, { code, message: 'x' });
-    await expect(new HttpAuctionClient(http()).placeBid('1', '4', 150)).rejects.toMatchObject({ code });
+    await expect(new HttpAuctionClient(http()).placeBid('1', NEW_BID)).rejects.toMatchObject({ code });
   });
 
   it('una lista vacía no llama al MS', async () => {

@@ -43,7 +43,13 @@ export function buildGateway(config: Config, clients: Clients = createClients(co
   const usersService = new UsersService(clients.userClient);
   const catalogService = new CatalogService(clients.itemClient);
   const pubsub = createGatewayPubSub();
-  const auctionsService = new AuctionsService(clients.auctionClient, catalogService, pubsub);
+  const auctionsService = new AuctionsService(
+    clients.auctionClient,
+    catalogService,
+    pubsub,
+    clients.walletClient,
+    clients.userClient,
+  );
   const walletService = new WalletService(clients.walletClient);
   const deliveriesService = new DeliveriesService(clients.deliveryClient);
   const notificationsService = new NotificationsService(clients.notificationClient);
@@ -122,7 +128,7 @@ export function createMockClients(): Clients {
   return {
     userClient,
     itemClient: new MockItemClient(),
-    auctionClient: new MockAuctionClient({ wallet: walletClient, users: userClient }),
+    auctionClient: new MockAuctionClient({ wallet: walletClient }),
     walletClient,
     deliveryClient: new MockDeliveryClient(),
     notificationClient: new MockNotificationClient(),

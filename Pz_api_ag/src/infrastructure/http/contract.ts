@@ -128,6 +128,7 @@ export function parsePlacedBid(value: unknown): PlacedBid {
   return {
     bid: parseBid(field(json, 'bid', 'PlacedBid')),
     auction: parseAuction(field(json, 'auction', 'PlacedBid')),
+    releasedReservationId: nullableString(json, 'releasedReservationId', 'PlacedBid'),
   };
 }
 

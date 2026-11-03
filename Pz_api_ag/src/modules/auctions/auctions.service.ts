@@ -1,11 +1,21 @@
 import DataLoader from 'dataloader';
+import { AppError, type ErrorCode } from '../../core/errors.js';
 import type { GatewayPubSub } from '../../core/pubsub.js';
 import type { CatalogService, Item, NewItem } from '../catalog/index.js';
-import type { Auction, AuctionClient, Bid } from './auction.client.js';
+import type { UserClient } from '../users/index.js';
+import type { WalletClient } from '../wallet/index.js';
+import type { Auction, AuctionClient, Bid, PlacedBid } from './auction.client.js';
 
 // Si la SPA no envía endsAt, la subasta dura dos semanas. El Gateway no pone tope a la fecha:
 // las reglas sobre ella (por ejemplo, que no esté en el pasado) son del MS.
 export const DEFAULT_AUCTION_DURATION_MS = 14 * 24 * 60 * 60 * 1000;
+
+// Errores con los que subastas rechaza la puja con certeza: la puja no se guardó y hay que compensar.
+// Cualquier otro (INTERNAL: tiempo agotado, MS caído) deja la duda de si se guardó.
+const BID_REJECTIONS: readonly ErrorCode[] = ['NOT_FOUND', 'AUCTION_CLOSED', 'BID_TOO_LOW', 'BAD_USER_INPUT'];
+
+// Liberar es idempotente (rest.md §2), así que reintentar no devuelve el dinero dos veces.
+const RELEASE_ATTEMPTS = 3;
 
 // Lo que llega de GraphQL (CreateItemInput).
 export interface CreateItemInput {
@@ -34,14 +44,70 @@ export class AuctionsService {
     private readonly auctionClient: AuctionClient,
     private readonly catalogService: CatalogService,
     private readonly pubsub: GatewayPubSub,
+    private readonly walletClient: WalletClient,
+    private readonly userClient: UserClient,
   ) {}
 
-  // Puja en el MS y, solo si se acepta, avisa a quienes siguen esa subasta (rest.md §3).
-  // Si el MS rechaza la puja, el error sube tal cual y no se publica nada.
+  // Saga de la puja (rest.md §3.4): 1) reservar en la billetera, 2) pujar en subastas con esa reserva,
+  // 3) si subastas la rechaza, liberar la reserva (compensación) y 4) liberar la reserva anterior del
+  // mismo usuario si subió su propia puja. El reintegro al postor superado no lo hace el Gateway: le
+  // llega a la billetera con el evento PujaSuperada. Solo una puja guardada se avisa a los suscriptores.
   async placeBid(userId: string, auctionId: string, amount: number): Promise<Bid> {
-    const { bid, auction } = await this.auctionClient.placeBid(auctionId, userId, amount);
-    this.pubsub.publish('auctionUpdated', auction.id, auction);
-    return bid;
+    const user = await this.userClient.getUser(userId);
+    const { reservation } = await this.walletClient.reserve(userId, auctionId, amount);
+
+    let placed: PlacedBid;
+    try {
+      placed = await this.auctionClient.placeBid(auctionId, {
+        userId,
+        userName: user.name,
+        amount,
+        reservationId: reservation.id,
+      });
+    } catch (error) {
+      const stored = isBidRejection(error) ? null : await this.findStoredBid(auctionId, userId, amount);
+      if (!stored) {
+        await this.release(userId, reservation.id, 'subastas no guardó la puja');
+        throw error;
+      }
+      // Subastas no respondió pero la puja quedó guardada: la Saga terminó bien. Sin la respuesta no se
+      // sabe si había una reserva anterior propia para liberar; si la había, queda en el log de subastas.
+      console.error(`[gateway] la puja de ${userId} en ${auctionId} se guardó aunque subastas no respondió.`);
+      placed = { bid: stored.bid, auction: stored.auction, releasedReservationId: null };
+    }
+
+    if (placed.releasedReservationId !== null) {
+      await this.release(userId, placed.releasedReservationId, 'el usuario subió su propia puja');
+    }
+    this.pubsub.publish('auctionUpdated', placed.auction.id, placed.auction);
+    return placed.bid;
+  }
+
+  // Tras un error incierto: la puja quedó guardada si hoy es la ganadora, de este usuario y con este monto.
+  // Si la consulta también falla, se toma como no guardada y se compensa.
+  private async findStoredBid(auctionId: string, userId: string, amount: number) {
+    try {
+      const [auction] = await this.auctionClient.getAuctionsByIds([auctionId]);
+      const bid = auction?.winningBid;
+      return auction && bid && bid.bidder.id === userId && bid.amount === amount ? { bid, auction } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Nunca lanza: si no se pudo liberar, lo deja en el log para arreglarlo a mano y la Saga sigue con
+  // su resultado (el error original de la puja, o la puja ya guardada).
+  private async release(userId: string, reservationId: string, reason: string): Promise<void> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= RELEASE_ATTEMPTS; attempt++) {
+      try {
+        await this.walletClient.releaseReservation(userId, reservationId);
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    console.error(`[gateway] la reserva ${reservationId} de ${userId} quedó sin liberar (${reason}).`, lastError);
   }
 
   subscribeToAuction(auctionId: string) {
@@ -90,4 +156,8 @@ function toNewItem(input: CreateItemInput): NewItem {
   if (input.images != null) item.images = input.images;
   if (input.documents != null) item.documents = input.documents;
   return item;
+}
+
+function isBidRejection(error: unknown): boolean {
+  return error instanceof AppError && BID_REJECTIONS.includes(error.code);
 }

@@ -123,11 +123,28 @@ describe('pujas', () => {
     expect(data.wallet).toMatchObject({ available: 100000, reserved: 0 });
   });
 
-  it('5b. quien va ganando puede subir su puja usando lo que ya tiene reservado', async () => {
+  it('5b. quien va ganando sube su puja con saldo disponible: se reserva lo nuevo y se libera lo anterior', async () => {
     const { graphql, tokenFor } = setup();
-    // Ana tiene 380000 disponibles y 120000 reservados en esta subasta: puede pujar hasta 500000.
-    const { errors } = await graphql(BID, { auctionId: OPEN_AUCTION, amount: 500000 }, await tokenFor(ANA));
+    const token = await tokenFor(ANA);
+    // Ana tiene 380000 disponibles y 120000 reservados en esta subasta (rest.md §9.1).
+    const { errors } = await graphql(BID, { auctionId: OPEN_AUCTION, amount: 300000 }, token);
     expect(errors).toBeUndefined();
+
+    const { data } = await graphql(WALLET, undefined, token);
+    expect(data.wallet).toMatchObject({ available: 200000, reserved: 300000 });
+    expect(data.wallet.movements.slice(0, 2)).toEqual([
+      { type: 'REFUND', amount: 120000, auction: { id: OPEN_AUCTION } },
+      { type: 'RESERVE', amount: 300000, auction: { id: OPEN_AUCTION } },
+    ]);
+  });
+
+  it('5c. para subir su puja necesita el monto nuevo completo disponible (no cuenta lo ya reservado)', async () => {
+    const { graphql, tokenFor } = setup();
+    const token = await tokenFor(ANA);
+    const { errors } = await graphql(BID, { auctionId: OPEN_AUCTION, amount: 500000 }, token);
+    expect(errors[0].extensions.code).toBe('INSUFFICIENT_FUNDS');
+    const { data } = await graphql(WALLET, undefined, token);
+    expect(data.wallet).toMatchObject({ available: 380000, reserved: 120000 });
   });
 
   it('6. una subasta inexistente devuelve NOT_FOUND', async () => {
@@ -141,6 +158,37 @@ describe('pujas', () => {
     const spy = vi.spyOn(clients.auctionClient, 'placeBid');
     const luis = await newBidder('Luis', 500000);
     await graphql(BID, { auctionId: OPEN_AUCTION, amount: 130000 }, luis.token);
-    expect(spy).toHaveBeenCalledWith(OPEN_AUCTION, luis.id, 130000);
+    expect(spy).toHaveBeenCalledWith(OPEN_AUCTION, {
+      userId: luis.id,
+      userName: 'Luis',
+      amount: 130000,
+      reservationId: expect.any(String),
+    });
+  });
+});
+
+describe('Saga de la puja: compensación', () => {
+  it.each([
+    ['BID_TOO_LOW', OPEN_AUCTION, 120000],
+    ['AUCTION_CLOSED', CLOSED_AUCTION, 300000],
+    ['NOT_FOUND', '999', 130000],
+  ])('si subastas rechaza la puja (%s), se libera la reserva y el saldo queda como estaba', async (code, auctionId, amount) => {
+    const { graphql, newBidder } = setup();
+    const luis = await newBidder('Luis', 500000);
+    const { errors } = await graphql(BID, { auctionId, amount }, luis.token);
+    expect(errors[0].extensions.code).toBe(code);
+
+    const { data } = await graphql(WALLET, undefined, luis.token);
+    expect(data.wallet).toMatchObject({ available: 500000, reserved: 0 });
+    expect(data.wallet.movements.map((movement: { type: string }) => movement.type)).toEqual(['REFUND', 'RESERVE', 'DEPOSIT']);
+  });
+
+  it('si la billetera no tiene saldo, subastas no recibe la puja', async () => {
+    const { graphql, clients, newBidder } = setup();
+    const spy = vi.spyOn(clients.auctionClient, 'placeBid');
+    const luis = await newBidder('Luis', 100000);
+    const { errors } = await graphql(BID, { auctionId: OPEN_AUCTION, amount: 130000 }, luis.token);
+    expect(errors[0].extensions.code).toBe('INSUFFICIENT_FUNDS');
+    expect(spy).not.toHaveBeenCalled();
   });
 });
