@@ -1,9 +1,6 @@
 package com.pujaz.usuarios.services;
 
-import com.pujaz.usuarios.dto.LoginRequest;
-import com.pujaz.usuarios.dto.RegisterRequest;
-import com.pujaz.usuarios.dto.UpdateUserRequest;
-import com.pujaz.usuarios.dto.UserResponse;
+import com.pujaz.usuarios.dto.*;
 import com.pujaz.usuarios.models.User;
 import com.pujaz.usuarios.repositories.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -20,14 +17,17 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserEventPublisher eventPublisher;
 
-    // Regla: mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula y 1 número
     private static final Pattern PASSWORD_PATTERN = 
         Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$");
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserServiceImpl(UserRepository userRepository, 
+                           PasswordEncoder passwordEncoder,
+                           UserEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -65,6 +65,20 @@ public class UserServiceImpl implements UserService {
         );
 
         User saved = userRepository.save(user);
+
+        // Publicar evento de dominio UsuarioRegistrado a RabbitMQ
+        try {
+            UsuarioRegistradoEvent event = new UsuarioRegistradoEvent(
+                saved.getId(),
+                saved.getName(),
+                saved.getEmail(),
+                saved.getRole()
+            );
+            eventPublisher.publishUserRegistered(event);
+        } catch (Exception e) {
+            System.err.println("Error publicando evento en RabbitMQ: " + e.getMessage());
+        }
+
         return new UserResponse(saved);
     }
 
