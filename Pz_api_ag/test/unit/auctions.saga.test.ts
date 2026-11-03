@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../src/core/errors.js';
 import { createGatewayPubSub } from '../../src/core/pubsub.js';
+import { MemoryPriceEvents } from '../../src/infrastructure/events/memory.price-events.js';
 import { MockItemClient } from '../../src/infrastructure/clients/mock/item.mock.js';
 import type { Auction, AuctionClient, Bid, PlacedBid } from '../../src/modules/auctions/index.js';
 import { AuctionsService } from '../../src/modules/auctions/index.js';
@@ -58,8 +59,9 @@ function setup() {
   } satisfies UserClient;
   const pubsub = createGatewayPubSub();
   const publish = vi.spyOn(pubsub, 'publish');
-  const service = new AuctionsService(auctions, new CatalogService(new MockItemClient()), pubsub, wallet, users);
-  return { service, wallet, auctions, publish };
+  const priceEvents = new MemoryPriceEvents();
+  const service = new AuctionsService(auctions, new CatalogService(new MockItemClient()), pubsub, wallet, users, priceEvents);
+  return { service, wallet, auctions, publish, priceEvents };
 }
 
 beforeEach(() => {
@@ -71,7 +73,7 @@ afterEach(() => {
 });
 
 describe('Saga de placeBid', () => {
-  it('reserva, puja con la reserva y el nombre del usuario, y publica la subasta', async () => {
+  it('reserva y puja con la reserva y el nombre del usuario; el aviso no sale de aquí sino de PrecioActualizado', async () => {
     const { service, wallet, auctions, publish } = setup();
     await expect(service.placeBid('7', '12', 130000)).resolves.toEqual(BID);
     expect(wallet.reserve).toHaveBeenCalledWith('7', '12', 130000);
@@ -82,7 +84,7 @@ describe('Saga de placeBid', () => {
       reservationId: '305',
     });
     expect(wallet.releaseReservation).not.toHaveBeenCalled();
-    expect(publish).toHaveBeenCalledWith('auctionUpdated', '12', AUCTION);
+    expect(publish).not.toHaveBeenCalled();
   });
 
   it('si la reserva falla, no llama a subastas y sube el error de la billetera', async () => {
@@ -112,7 +114,6 @@ describe('Saga de placeBid', () => {
     await expect(service.placeBid('7', '12', 130000)).resolves.toEqual(BID);
     expect(auctions.getAuctionsByIds).toHaveBeenCalledWith(['12']);
     expect(wallet.releaseReservation).not.toHaveBeenCalled();
-    expect(publish).toHaveBeenCalledWith('auctionUpdated', '12', AUCTION);
   });
 
   it('si subastas no responde y la puja no quedó (otro va ganando), libera y sube INTERNAL', async () => {
@@ -164,11 +165,38 @@ describe('Saga de placeBid', () => {
   });
 
   it('si no se puede liberar la reserva anterior, la puja igual se devuelve (ya quedó guardada)', async () => {
-    const { service, wallet, auctions, publish } = setup();
+    const { service, wallet, auctions } = setup();
     auctions.placeBid.mockResolvedValue({ ...PLACED, releasedReservationId: '301' });
     wallet.releaseReservation.mockRejectedValue(new AppError('INTERNAL', 'billetera caída'));
     await expect(service.placeBid('7', '12', 130000)).resolves.toEqual(BID);
-    expect(publish).toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining('la reserva 301'), expect.anything());
+  });
+});
+
+describe('auctionUpdated desde PrecioActualizado', () => {
+  it('un aviso de precio vuelve a leer la subasta y la publica a sus suscriptores', async () => {
+    const { auctions, publish, priceEvents } = setup();
+    auctions.getAuctionsByIds.mockResolvedValue([AUCTION]);
+    priceEvents.emit('12');
+    await vi.waitFor(() => expect(publish).toHaveBeenCalledWith('auctionUpdated', '12', AUCTION));
+    expect(auctions.getAuctionsByIds).toHaveBeenCalledWith(['12']);
+  });
+
+  it('si la subasta no existe, no publica y lo deja en el log', async () => {
+    const { auctions, publish, priceEvents } = setup();
+    auctions.getAuctionsByIds.mockResolvedValue([]);
+    priceEvents.emit('999');
+    await vi.waitFor(() => expect(console.error).toHaveBeenCalledWith(expect.stringContaining('subasta 999')));
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('si subastas no responde al leer, no publica y lo deja en el log', async () => {
+    const { auctions, publish, priceEvents } = setup();
+    auctions.getAuctionsByIds.mockRejectedValue(new AppError('INTERNAL', 'caído'));
+    priceEvents.emit('12');
+    await vi.waitFor(() =>
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('no se pudo leer la subasta 12'), expect.anything()),
+    );
+    expect(publish).not.toHaveBeenCalled();
   });
 });

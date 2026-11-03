@@ -5,6 +5,7 @@ import type { CatalogService, Item, NewItem } from '../catalog/index.js';
 import type { UserClient } from '../users/index.js';
 import type { WalletClient } from '../wallet/index.js';
 import type { Auction, AuctionClient, Bid, PlacedBid } from './auction.client.js';
+import type { PriceEvents } from './price-events.js';
 
 // Si la SPA no envía endsAt, la subasta dura dos semanas. El Gateway no pone tope a la fecha:
 // las reglas sobre ella (por ejemplo, que no esté en el pasado) son del MS.
@@ -46,12 +47,16 @@ export class AuctionsService {
     private readonly pubsub: GatewayPubSub,
     private readonly walletClient: WalletClient,
     private readonly userClient: UserClient,
-  ) {}
+    priceEvents: PriceEvents,
+  ) {
+    priceEvents.onPriceUpdated((auctionId) => void this.publishLatest(auctionId));
+  }
 
   // Saga de la puja (rest.md §3.4): 1) reservar en la billetera, 2) pujar en subastas con esa reserva,
   // 3) si subastas la rechaza, liberar la reserva (compensación) y 4) liberar la reserva anterior del
   // mismo usuario si subió su propia puja. El reintegro al postor superado no lo hace el Gateway: le
-  // llega a la billetera con el evento PujaSuperada. Solo una puja guardada se avisa a los suscriptores.
+  // llega a la billetera con el evento PujaSuperada, y el aviso a los suscriptores llega con
+  // PrecioActualizado (publishLatest), no desde aquí.
   async placeBid(userId: string, auctionId: string, amount: number): Promise<Bid> {
     const user = await this.userClient.getUser(userId);
     const { reservation } = await this.walletClient.reserve(userId, auctionId, amount);
@@ -79,8 +84,22 @@ export class AuctionsService {
     if (placed.releasedReservationId !== null) {
       await this.release(userId, placed.releasedReservationId, 'el usuario subió su propia puja');
     }
-    this.pubsub.publish('auctionUpdated', placed.auction.id, placed.auction);
     return placed.bid;
+  }
+
+  // Por cada PrecioActualizado (rest.md §7): vuelve a leer la subasta y la envía a los suscriptores
+  // de esta copia del Gateway. Así se ven también las pujas hechas a través de otras copias.
+  private async publishLatest(auctionId: string): Promise<void> {
+    try {
+      const [auction] = await this.auctionClient.getAuctionsByIds([auctionId]);
+      if (!auction) {
+        console.error(`[gateway] PrecioActualizado de la subasta ${auctionId}, que no existe: no se avisa.`);
+        return;
+      }
+      this.pubsub.publish('auctionUpdated', auction.id, auction);
+    } catch (error) {
+      console.error(`[gateway] no se pudo leer la subasta ${auctionId} tras PrecioActualizado.`, error);
+    }
   }
 
   // Tras un error incierto: la puja quedó guardada si hoy es la ganadora, de este usuario y con este monto.

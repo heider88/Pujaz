@@ -9,6 +9,7 @@ const MS_URLS = {
   MS_CATALOGO_URL: 'http://pz-catalogo-cl:8000',
   MS_POSTPUJA_URL: 'http://pz-postpuja-cl:8000',
   MS_NOTIFICACIONES_URL: 'http://pz-notificaciones-cl:8000',
+  RABBITMQ_URL: 'amqp://guest:guest@pz-eventos-mq:5672/',
 };
 
 describe('loadConfig', () => {
@@ -42,6 +43,7 @@ describe('loadConfig', () => {
       msCatalogoUrl: MS_URLS.MS_CATALOGO_URL,
       msPostpujaUrl: MS_URLS.MS_POSTPUJA_URL,
       msNotificacionesUrl: MS_URLS.MS_NOTIFICACIONES_URL,
+      rabbitmqUrl: MS_URLS.RABBITMQ_URL,
       port: 4000,
       corsOrigin: 'http://localhost:5173',
     });

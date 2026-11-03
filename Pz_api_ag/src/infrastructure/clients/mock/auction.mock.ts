@@ -8,6 +8,7 @@ import type {
   PlacedBid,
   UserSummary,
 } from '../../../modules/auctions/index.js';
+import type { MemoryPriceEvents } from '../../events/memory.price-events.js';
 import { MOCK_ITEM_IDS } from './item.mock.js';
 import type { MockWalletClient } from './wallet.mock.js';
 
@@ -72,9 +73,9 @@ export class MockAuctionClient implements AuctionClient {
   private nextId = 100;
   private nextBidId = 1000;
 
-  // Con la billetera falsa, al superar a otro postor se simula el evento PujaSuperada: la billetera
-  // libera la reserva del superado, como hará Pz_billetera_cl al consumirlo (eventos.md §2).
-  constructor(private readonly deps: { wallet?: MockWalletClient } = {}) {}
+  // Simula los eventos que publica Pz_subastas_cl al guardar una puja: PujaSuperada (la billetera
+  // falsa libera la reserva del superado, eventos.md §2) y PrecioActualizado (eventos.md §3).
+  constructor(private readonly deps: { wallet?: MockWalletClient; priceEvents?: MemoryPriceEvents } = {}) {}
 
   async getAuctionsByItemIds(itemIds: string[]): Promise<Auction[]> {
     return this.auctions.filter((auction) => itemIds.includes(auction.itemId)).map(toAuction);
@@ -119,6 +120,7 @@ export class MockAuctionClient implements AuctionClient {
         await this.deps.wallet?.releaseReservation(previous.bidder.id, previous.reservationId);
       }
     }
+    this.deps.priceEvents?.emit(auctionId);
     return { bid: toBid(bid), auction: toAuction(stored), releasedReservationId };
   }
 

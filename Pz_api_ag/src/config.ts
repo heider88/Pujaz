@@ -12,6 +12,7 @@ export interface Config {
   msCatalogoUrl: string | null;
   msPostpujaUrl: string | null;
   msNotificacionesUrl: string | null;
+  rabbitmqUrl: string | null;
   port: number;
   corsOrigin: string;
 }
@@ -38,6 +39,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
   const msCatalogoUrl = env.MS_CATALOGO_URL || null;
   const msPostpujaUrl = env.MS_POSTPUJA_URL || null;
   const msNotificacionesUrl = env.MS_NOTIFICACIONES_URL || null;
+  const rabbitmqUrl = env.RABBITMQ_URL || null;
   if (!useMocks) {
     const required = {
       MS_USUARIOS_URL: msUsuariosUrl,
@@ -46,6 +48,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
       MS_CATALOGO_URL: msCatalogoUrl,
       MS_POSTPUJA_URL: msPostpujaUrl,
       MS_NOTIFICACIONES_URL: msNotificacionesUrl,
+      RABBITMQ_URL: rabbitmqUrl,
     };
     for (const [name, value] of Object.entries(required)) {
       if (!value) {
@@ -64,6 +67,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     msCatalogoUrl,
     msPostpujaUrl,
     msNotificacionesUrl,
+    rabbitmqUrl,
     port: parsePort(env.PORT),
     corsOrigin: env.CORS_ORIGIN || 'http://localhost:5173',
   };

@@ -13,8 +13,15 @@ import { MockItemClient } from './infrastructure/clients/mock/item.mock.js';
 import { MockNotificationClient } from './infrastructure/clients/mock/notification.mock.js';
 import { MockUserClient } from './infrastructure/clients/mock/user.mock.js';
 import { MockWalletClient } from './infrastructure/clients/mock/wallet.mock.js';
+import { MemoryPriceEvents } from './infrastructure/events/memory.price-events.js';
+import { RabbitPriceEvents } from './infrastructure/events/rabbitmq.price-events.js';
 import { HttpClient } from './infrastructure/http/http-client.js';
-import { AuctionsService, createAuctionsResolvers, type AuctionClient } from './modules/auctions/index.js';
+import {
+  AuctionsService,
+  createAuctionsResolvers,
+  type AuctionClient,
+  type PriceEvents,
+} from './modules/auctions/index.js';
 import { AuthService, TokenService, createAuthResolvers } from './modules/auth/index.js';
 import { CatalogService, createCatalogResolvers, type ItemClient } from './modules/catalog/index.js';
 import { DeliveriesService, createDeliveriesResolvers, type DeliveryClient } from './modules/deliveries/index.js';
@@ -34,6 +41,8 @@ export interface Clients {
   walletClient: WalletClient;
   deliveryClient: DeliveryClient;
   notificationClient: NotificationClient;
+  // De dónde llegan los avisos de precio: el broker con los MS reales, o el mock de subastas.
+  priceEvents: PriceEvents;
 }
 
 // Único lugar donde se cablean las dependencias.
@@ -49,6 +58,7 @@ export function buildGateway(config: Config, clients: Clients = createClients(co
     pubsub,
     clients.walletClient,
     clients.userClient,
+    clients.priceEvents,
   );
   const walletService = new WalletService(clients.walletClient);
   const deliveriesService = new DeliveriesService(clients.deliveryClient);
@@ -93,7 +103,7 @@ export function buildGateway(config: Config, clients: Clients = createClients(co
     getUserContext: (token: string | null) => (token === null ? Promise.resolve(null) : authService.resolveUser(token)),
   });
 
-  return { yoga, tokenService };
+  return { yoga, tokenService, priceEvents: clients.priceEvents };
 }
 
 // USE_MOCKS decide qué implementación se inyecta; los servicios no notan la diferencia.
@@ -119,18 +129,21 @@ export function createHttpClients(config: Config): Clients {
     walletClient: new HttpWalletClient(billetera),
     deliveryClient: new HttpDeliveryClient(postpuja),
     notificationClient: new HttpNotificationClient(notificaciones),
+    priceEvents: new RabbitPriceEvents(url(config.rabbitmqUrl, 'RABBITMQ_URL')),
   };
 }
 
 export function createMockClients(): Clients {
   const userClient = new MockUserClient();
   const walletClient = new MockWalletClient();
+  const priceEvents = new MemoryPriceEvents();
   return {
     userClient,
     itemClient: new MockItemClient(),
-    auctionClient: new MockAuctionClient({ wallet: walletClient }),
+    auctionClient: new MockAuctionClient({ wallet: walletClient, priceEvents }),
     walletClient,
     deliveryClient: new MockDeliveryClient(),
     notificationClient: new MockNotificationClient(),
+    priceEvents,
   };
 }

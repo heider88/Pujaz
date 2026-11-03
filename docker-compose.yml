@@ -67,6 +67,7 @@ services:
       MS_USUARIOS_URL: ${MS_USUARIOS_URL:-http://pz-usuarios-cl:8080}
       MS_POSTPUJA_URL: ${MS_POSTPUJA_URL:-http://pz-postpuja-cl:8000}
       MS_NOTIFICACIONES_URL: ${MS_NOTIFICACIONES_URL:-http://pz-notificaciones-cl:8000}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
     - backend
     depends_on:
@@ -79,6 +80,8 @@ services:
       pz-usuarios-cl:
         condition: service_healthy
       pz-postpuja-cl:
+        condition: service_healthy
+      pz-eventos-mq:
         condition: service_healthy
     healthcheck:
       test:
