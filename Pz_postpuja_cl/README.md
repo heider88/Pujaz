@@ -18,7 +18,7 @@ Lo publica Pz_subastas_cl al cerrar una subasta vencida.
 - Exchange `eventos` (tipo `fanout`, durable), el mismo que usan Pz_subastas_cl y Pz_billetera_cl.
   La routing key es el nombre del evento; como el fanout le entrega todo a todos, Postpuja solo
   procesa los mensajes con routing key `SubastaCerrada` y confirma e ignora los demás.
-- Cola propia y durable: `postpuja_eventos`.
+- Cola propia y durable: `postpuja.eventos`.
 - Cuerpo JSON:
 
 ```json

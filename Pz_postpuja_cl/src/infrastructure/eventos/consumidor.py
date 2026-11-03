@@ -25,7 +25,7 @@ RABBITMQ_URL = os.getenv("RABBITMQ_URL", "")
 # Deben coincidir con Pz_subastas_cl y Pz_billetera_cl (exchange "eventos", tipo fanout).
 EXCHANGE = os.getenv("EVENTOS_EXCHANGE", "eventos")
 EVENTO = os.getenv("EVENTO_SUBASTA_CERRADA", "SubastaCerrada")
-COLA = os.getenv("POSTPUJA_COLA", "postpuja_eventos")
+COLA = os.getenv("POSTPUJA_COLA", "postpuja.eventos")
 
 
 def procesar_cuerpo(cuerpo: bytes, servicio: EntregaService) -> str:
