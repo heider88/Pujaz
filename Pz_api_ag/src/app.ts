@@ -63,7 +63,7 @@ export function buildGateway(config: Config, clients: Clients = createClients(co
     corsOrigin: config.corsOrigin,
     // Token inválido o de un usuario eliminado: las operaciones públicas siguen y las protegidas
     // responden UNAUTHENTICATED.
-    getUserId: (token) => (token === null ? Promise.resolve(null) : authService.resolveUserId(token)),
+    getUserContext: (token: string | null) => (token === null ? Promise.resolve(null) : authService.resolveUser(token)),
   });
 
   return { yoga, tokenService };

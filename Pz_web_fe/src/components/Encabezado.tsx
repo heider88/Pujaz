@@ -25,9 +25,11 @@ function Menu({ usuario, ruta }: { usuario: Usuario | null; ruta: string | null 
       </EnlaceMenu>
       {usuario ? (
         <>
-          <EnlaceMenu href="/publicar" ruta={ruta}>
-            Publicar artículo
-          </EnlaceMenu>
+          {usuario.role === 'vendedor' && (
+            <EnlaceMenu href="/publicar" ruta={ruta}>
+              Publicar artículo
+            </EnlaceMenu>
+          )}
           <EnlaceMenu href="/billetera" ruta={ruta}>
             Mi billetera
           </EnlaceMenu>

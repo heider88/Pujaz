@@ -5,6 +5,7 @@ export interface Usuario {
   id: string
   name: string
   email: string
+  role: string
   createdAt: string
 }
 
@@ -19,6 +20,7 @@ export const ME: TypedDocumentNode<{ me: Usuario | null }, Record<string, never>
       id
       name
       email
+      role
       createdAt
     }
   }
@@ -35,6 +37,7 @@ export const LOGIN: TypedDocumentNode<
         id
         name
         email
+        role
         createdAt
       }
     }
@@ -52,6 +55,7 @@ export const REGISTER: TypedDocumentNode<
         id
         name
         email
+        role
         createdAt
       }
     }
@@ -68,6 +72,7 @@ export const UPDATE_USER: TypedDocumentNode<
       id
       name
       email
+      role
       createdAt
     }
   }

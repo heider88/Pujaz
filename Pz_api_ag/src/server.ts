@@ -3,26 +3,26 @@ import type { ExecutionArgs, ExecutionResult } from 'graphql';
 import { useServer } from 'graphql-ws/use/ws';
 import { createSchema, createYoga, type Plugin, type YogaServerInstance } from 'graphql-yoga';
 import { WebSocketServer } from 'ws';
-import type { GatewayContext } from './core/context.js';
+import type { GatewayContext, UserContext } from './core/context.js';
 import { maskError, toAllowedError } from './core/errors.js';
 
 type GatewayResolvers = NonNullable<Parameters<typeof createSchema<GatewayContext>>[0]['resolvers']>;
 
-// Recibe el token (sin "Bearer ") y devuelve el userId, o null si no hay token o no es válido.
-export type GetUserId = (token: string | null) => Promise<string | null>;
+// Recibe el token (sin "Bearer ") y devuelve el usuario, o null si no hay token o no es válido.
+export type GetUserContext = (token: string | null) => Promise<UserContext | null>;
 
 export interface GatewayOptions {
   typeDefs: string;
   resolvers: GatewayResolvers;
   corsOrigin: string;
-  getUserId: GetUserId;
+  getUserContext: GetUserContext;
 }
 
 export function createGateway({
   typeDefs,
   resolvers,
   corsOrigin,
-  getUserId,
+  getUserContext,
 }: GatewayOptions): YogaServerInstance<object, GatewayContext> {
   return createYoga<object, GatewayContext>({
     schema: createSchema<GatewayContext>({ typeDefs, resolvers }),
@@ -39,7 +39,7 @@ export function createGateway({
         }
       }
       return {
-        userId: token ? await getUserId(token) : null,
+        user: token ? await getUserContext(token) : null,
       };
     },
     plugins: [useAllowedErrorCodes()],

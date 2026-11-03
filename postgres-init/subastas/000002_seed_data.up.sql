@@ -1,0 +1,11 @@
+INSERT INTO auctions (item_id, status, current_price, ends_at) VALUES
+('60d5ec49f1b2c3d4e5f60001', 'abierta', 100000.00, NOW() + INTERVAL '3 days'),
+('60d5ec49f1b2c3d4e5f60002', 'abierta', 250000.00, NOW() + INTERVAL '3 days'),
+('60d5ec49f1b2c3d4e5f60003', 'abierta', 50000.00, NOW() + INTERVAL '3 days'),
+('60d5ec49f1b2c3d4e5f60004', 'abierta', 800000.00, NOW() + INTERVAL '3 days'),
+('60d5ec49f1b2c3d4e5f60005', 'abierta', 120000.00, NOW() + INTERVAL '3 days'),
+('60d5ec49f1b2c3d4e5f60006', 'abierta', 300000.00, NOW() + INTERVAL '3 days'),
+('60d5ec49f1b2c3d4e5f60007', 'abierta', 450000.00, NOW() + INTERVAL '3 days'),
+('60d5ec49f1b2c3d4e5f60008', 'abierta', 900000.00, NOW() + INTERVAL '3 days'),
+('60d5ec49f1b2c3d4e5f60009', 'abierta', 60000.00, NOW() + INTERVAL '3 days'),
+('60d5ec49f1b2c3d4e5f60010', 'abierta', 1000000.00, NOW() + INTERVAL '3 days');

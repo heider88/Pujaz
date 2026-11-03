@@ -17,6 +17,7 @@ const SEED_USERS: StoredUser[] = [
     id: '7',
     name: 'Ana',
     email: 'ana@correo.com',
+    role: 'comprador',
     password: 'secreto123',
     createdAt: '2026-10-09T14:00:00Z',
   },
@@ -24,6 +25,7 @@ const SEED_USERS: StoredUser[] = [
     id: '9',
     name: 'Luis',
     email: 'luis.semilla@correo.com',
+    role: 'vendedor',
     password: 'Secreto456',
     createdAt: '2026-10-09T14:00:00Z',
   },
@@ -46,6 +48,7 @@ export class MockUserClient implements UserClient {
       id: String(this.nextId++),
       name: input.name,
       email: input.email,
+      role: 'comprador',
       password: input.password,
       createdAt: new Date().toISOString(),
     };
@@ -116,6 +119,6 @@ function validatePassword(password: string): void {
   }
 }
 
-function toPublic({ id, name, email, createdAt }: StoredUser): User {
-  return { id, name, email, createdAt };
+function toPublic({ id, name, email, role, createdAt }: StoredUser): User {
+  return { id, name, email, role, createdAt };
 }

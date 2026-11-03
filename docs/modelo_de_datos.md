@@ -12,6 +12,7 @@
 El siguiente diagrama ilustra la estructura relacional dentro de PostgreSQL y su referencia cruzada (identificador externo) hacia la colección de documentos en MongoDB.
 
 ```mermaid
+%%{init: {'themeVariables': { 'background': '#ffffff' }}}%%
 erDiagram
     %% ==========================================
     %% ECOSISTEMA POSTGRESQL (MS-TRANSACCIONAL)

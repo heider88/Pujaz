@@ -8,7 +8,7 @@ export class WalletService {
   }
 
   // El MS valida que amount sea positivo y el promoCode válido (BAD_USER_INPUT); el Gateway no repite la regla.
-  deposit(userId: string, amount: number, promoCode: string): Promise<Wallet> {
+  deposit(userId: string, amount: number, promoCode?: string): Promise<Wallet> {
     return this.walletClient.deposit(userId, amount, promoCode);
   }
 }

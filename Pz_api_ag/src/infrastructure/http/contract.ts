@@ -72,6 +72,7 @@ export function parseUser(value: unknown): User {
     id: string(json, 'id', 'User'),
     name: string(json, 'name', 'User'),
     email: string(json, 'email', 'User'),
+    role: string(json, 'role', 'User'),
     createdAt: string(json, 'createdAt', 'User'),
   };
 }

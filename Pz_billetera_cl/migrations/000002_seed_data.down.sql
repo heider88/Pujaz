@@ -1,3 +1,2 @@
-TRUNCATE TABLE wallet_movements CASCADE;
-TRUNCATE TABLE wallets CASCADE;
-TRUNCATE TABLE users CASCADE;
+DELETE FROM wallet_movements WHERE wallet_id IN (1, 2, 3);
+DELETE FROM wallets WHERE id IN (1, 2, 3);

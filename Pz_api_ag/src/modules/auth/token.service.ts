@@ -3,7 +3,7 @@ import { AppError } from '../../core/errors.js';
 
 const ALGORITHM = 'HS256';
 
-// Firma y verifica el JWT: solo sub = userId, iat y exp.
+// Firma y verifica el JWT: incluye sub = userId, role, iat y exp.
 export class TokenService {
   private readonly key: Uint8Array;
 
@@ -14,8 +14,8 @@ export class TokenService {
     this.key = new TextEncoder().encode(secret);
   }
 
-  sign(userId: string): Promise<string> {
-    return new SignJWT()
+  sign(userId: string, role: string): Promise<string> {
+    return new SignJWT({ role })
       .setProtectedHeader({ alg: ALGORITHM })
       .setSubject(userId)
       .setIssuedAt()
@@ -23,13 +23,13 @@ export class TokenService {
       .sign(this.key);
   }
 
-  async verify(token: string): Promise<{ userId: string }> {
+  async verify(token: string): Promise<{ userId: string; role: string }> {
     try {
       const { payload } = await jwtVerify(token, this.key, { algorithms: [ALGORITHM] });
       if (!payload.sub) {
         throw new Error('Token sin sub');
       }
-      return { userId: payload.sub };
+      return { userId: payload.sub, role: payload.role as string };
     } catch {
       throw new AppError('UNAUTHENTICATED', 'La sesión no es válida o expiró.');
     }

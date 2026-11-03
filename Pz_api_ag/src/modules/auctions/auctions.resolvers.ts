@@ -26,9 +26,12 @@ export function createAuctionsResolvers(auctionsService: AuctionsService) {
     Mutation: {
       // El usuario sale del token: placeBid no recibe un userId.
       placeBid: (_parent: unknown, args: { auctionId: string; amount: number }, ctx: GatewayContext) =>
-        auctionsService.placeBid(requireUser(ctx), args.auctionId, args.amount),
+        auctionsService.placeBid(requireUser(ctx).id, args.auctionId, args.amount),
       createItem: async (_parent: unknown, args: { input: CreateItemInput }, ctx: GatewayContext) => {
-        requireUser(ctx);
+        const user = requireUser(ctx);
+        if (user.role !== 'vendedor') {
+          throw new AppError('FORBIDDEN', 'Solo los vendedores pueden publicar piezas.');
+        }
         const { item, auction } = await auctionsService.createItem(args.input);
         // Item.auction ya tiene la subasta recién creada: no hace falta pedirla otra vez.
         loaders(ctx).auctionByItemId.prime(item.id, auction);

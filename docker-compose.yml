@@ -85,15 +85,53 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-  pz-transaccional-db:
+  pz-usuarios-db:
     image: postgres:15
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-pujaz_transaccional}
+      POSTGRES_DB: ${POSTGRES_DB:-pujaz_usuarios}
     volumes:
-    - postgres_data:/var/lib/postgresql/data
-    - ./postgres-init/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    - usuarios_data:/var/lib/postgresql/data
+    - ./Pz_usuarios_cl/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+    - data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  pz-subastas-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pujaz_subastas}
+    volumes:
+    - subastas_data:/var/lib/postgresql/data
+    - ./Pz_subastas_cl/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+    - data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  pz-billetera-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pujaz_billetera}
+    volumes:
+    - billetera_data:/var/lib/postgresql/data
+    - ./Pz_billetera_cl/migrations:/docker-entrypoint-initdb.d:ro
     networks:
     - data
     healthcheck:
@@ -207,15 +245,14 @@ services:
     build:
       context: ./Pz_subastas_cl
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define
-        POSTGRES_PASSWORD}@pz-transaccional-db:5432/pujaz_subastas?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@pz-subastas-db:5432/${POSTGRES_DB:-pujaz_subastas}?sslmode=disable
       PORT: '8081'
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
     - backend
     - data
     depends_on:
-      pz-transaccional-db:
+      pz-subastas-db:
         condition: service_healthy
       pz-eventos-mq:
         condition: service_healthy
@@ -230,19 +267,42 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  pz-usuarios-cl:
+    build:
+      context: ./Pz_usuarios_cl
+      dockerfile: Dockerfile
+    environment:
+      PORT: '8080'
+      POSTGRES_USER: ${POSTGRES_USER:-pujaz_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pz-usuarios-db:5432/pujaz_usuarios
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
+    networks:
+      - backend
+      - data
+    depends_on:
+      pz-usuarios-db:
+        condition: service_healthy
+      pz-eventos-mq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
   pz-billetera-cl:
     build:
       context: ./Pz_billetera_cl
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define
-        POSTGRES_PASSWORD}@pz-transaccional-db:5432/pujaz_billetera?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-pujaz_user}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@pz-billetera-db:5432/${POSTGRES_DB:-pujaz_billetera}?sslmode=disable
       PORT: '8082'
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
     - backend
     - data
     depends_on:
-      pz-transaccional-db:
+      pz-billetera-db:
         condition: service_healthy
       pz-eventos-mq:
         condition: service_healthy
@@ -264,6 +324,8 @@ networks:
   data:
     internal: true
 volumes:
-  postgres_data: null
+  usuarios_data: null
+  subastas_data: null
+  billetera_data: null
   mongo_data: null
   postpuja_data: null

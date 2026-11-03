@@ -15,29 +15,27 @@ export class AuthService {
 
   async register(input: NewUser): Promise<AuthPayload> {
     const user = await this.userClient.createUser(input);
-    return { token: await this.tokenService.sign(user.id), user };
+    return { token: await this.tokenService.sign(user.id, user.role), user };
   }
 
   async login(credentials: Credentials): Promise<AuthPayload> {
     const user = await this.userClient.verifyCredentials(credentials);
-    return { token: await this.tokenService.sign(user.id), user };
+    return { token: await this.tokenService.sign(user.id, user.role), user };
   }
 
-  // userId del token, o null si el token no es válido o el usuario ya no existe (fue eliminado):
-  // un JWT bien firmado no basta. Si el MS falla por otra causa se confía en el token, para no
-  // cerrar la sesión ni romper las consultas públicas; las protegidas fallarán contra el mismo MS.
-  async resolveUserId(token: string): Promise<string | null> {
-    let userId: string;
+  // Datos del token, o null si el token no es válido o el usuario ya no existe (fue eliminado)
+  async resolveUser(token: string): Promise<{ id: string; role: string } | null> {
+    let payload: { userId: string; role: string };
     try {
-      userId = (await this.tokenService.verify(token)).userId;
+      payload = await this.tokenService.verify(token);
     } catch {
       return null;
     }
     try {
-      await this.userClient.getUser(userId);
+      await this.userClient.getUser(payload.userId);
     } catch (error) {
       if (error instanceof AppError && error.code === 'NOT_FOUND') return null;
     }
-    return userId;
+    return { id: payload.userId, role: payload.role };
   }
 }

@@ -1,7 +1,6 @@
 'use client'
 // Guarda la sesión: el JWT queda en el navegador y el usuario se pide con `me`.
 // En el servidor no hay sesión (no hay localStorage): las partes privadas se dibujan al hidratar.
-// KAN-66 (Heider) cambia esto a cookie httpOnly para que el servidor sepa quién está conectado.
 import { useApolloClient, useQuery } from '@apollo/client/react'
 import { useCallback, useMemo, type ReactNode, useState, useEffect } from 'react'
 import { clearAuthCookie, setAuthCookie } from '../app/actions'

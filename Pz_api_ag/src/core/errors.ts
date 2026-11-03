@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 
 export const ERROR_CODES = [
   'UNAUTHENTICATED',
+  'FORBIDDEN',
   'INVALID_CREDENTIALS',
   'EMAIL_TAKEN',
   'BAD_USER_INPUT',

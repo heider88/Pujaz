@@ -1,12 +1,11 @@
-INSERT INTO users (id, name, email, password_hash, role) VALUES
-(1, 'Ana', 'ana@correo.com', '$2a$10$vKR3BfuHcEmHaGSLpFmiI.b.hlVWE7.I8oIumhCvr2Erm0PG.6gru', 'comprador'),
-(2, 'Heider', 'heider@correo.com', '$2a$10$vKR3BfuHcEmHaGSLpFmiI.b.hlVWE7.I8oIumhCvr2Erm0PG.6gru', 'vendedor'),
-(3, 'Cata', 'cata@correo.com', '$2a$10$vKR3BfuHcEmHaGSLpFmiI.b.hlVWE7.I8oIumhCvr2Erm0PG.6gru', 'comprador');
+INSERT INTO wallets (id, user_id, balance_available, balance_reserved) VALUES
+(1, 1, 500000.00, 0.00),
+(2, 2, 500000.00, 0.00),
+(3, 3, 500000.00, 0.00);
 
-SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
+SELECT setval('wallets_id_seq', (SELECT MAX(id) FROM wallets));
 
-INSERT INTO wallets (user_id, balance_available, balance_reserved)
-SELECT id, 500000.00, 0.00 FROM users;
-
-INSERT INTO wallet_movements (wallet_id, amount, type)
-SELECT id, 500000.00, 'recarga' FROM wallets;
+INSERT INTO wallet_movements (wallet_id, amount, type) VALUES
+(1, 500000.00, 'recarga'),
+(2, 500000.00, 'recarga'),
+(3, 500000.00, 'recarga');

@@ -41,7 +41,7 @@ export class MockWalletClient implements WalletClient {
     return structuredClone(this.findOrCreate(userId));
   }
 
-  async deposit(userId: string, amount: number, promoCode: string): Promise<Wallet> {
+  async deposit(userId: string, amount: number, promoCode?: string): Promise<Wallet> {
     if (!(amount > 0)) {
       throw new AppError('BAD_USER_INPUT', 'El monto de la recarga debe ser mayor que cero.');
     }

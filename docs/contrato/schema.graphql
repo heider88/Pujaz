@@ -19,6 +19,7 @@ type User {
   id: ID!
   name: String!
   email: String!
+  role: String!
   createdAt: DateTime!
   # La contraseña nunca se expone
 }
@@ -127,6 +128,7 @@ type Notification {
 input RegisterInput {
   name: String!
   email: String!
+  role: String!
   password: String!
 }
 
