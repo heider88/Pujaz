@@ -10,7 +10,7 @@ const NOMBRE_MOVIMIENTO: Record<TipoMovimiento, string> = {
   DEPOSIT: 'Recarga',
   RESERVE: 'Reserva por puja',
   REFUND: 'Reintegro',
-  CHARGE: 'Cobro por subasta ganada',
+  CHARGE: 'Subasta ganada',
 }
 
 // Reservar y cobrar sacan plata; recargar y reintegrar la devuelven.
@@ -57,6 +57,16 @@ export function BilleteraUsuario({ wallet }: { wallet: Billetera }) {
   }
 
   const { available, reserved, movements } = billetera
+
+  const auctionIdsCobrados = new Set(
+    movements.filter((m) => m.type === 'CHARGE' && m.auction).map((m) => m.auction!.id)
+  )
+  const movimientosVisibles = movements.filter((m) => {
+    if (m.type === 'RESERVE' && m.auction && auctionIdsCobrados.has(m.auction.id)) {
+      return false
+    }
+    return true
+  })
 
   return (
     <section>
@@ -115,7 +125,7 @@ export function BilleteraUsuario({ wallet }: { wallet: Billetera }) {
       </form>
 
       <h2>Movimientos</h2>
-      {movements.length === 0 ? (
+      {movimientosVisibles.length === 0 ? (
         <p>Todavía no tienes movimientos.</p>
       ) : (
         <table className="tabla-movimientos">
@@ -128,7 +138,7 @@ export function BilleteraUsuario({ wallet }: { wallet: Billetera }) {
             </tr>
           </thead>
           <tbody>
-            {movements.map((m) => (
+            {movimientosVisibles.map((m) => (
               <tr key={m.id}>
                 <td>{formatearFecha(m.createdAt)}</td>
                 <td>{NOMBRE_MOVIMIENTO[m.type]}</td>

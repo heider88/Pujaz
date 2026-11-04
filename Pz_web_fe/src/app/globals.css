@@ -1424,6 +1424,7 @@ section.pagina-angosta h2 {
   }
 }
 
+<<<<<<< HEAD
 /* ---------- Mis entregas y mis notificaciones (perfil) ---------- */
 
 .lista-basica {
@@ -1452,4 +1453,25 @@ section.pagina-angosta h2 {
 
 .lista-basica button {
   margin-top: 0.5rem;
+}
+
+.toast-ganador {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: var(--ok-fondo);
+  color: var(--ok);
+  border: 1px solid var(--ok);
+  padding: 16px 24px;
+  border-radius: var(--radio);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+  font-family: var(--sans);
+  z-index: 9999;
+  animation: deslizar-toast 0.4s ease-out forwards;
+}
+
+@keyframes deslizar-toast {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }

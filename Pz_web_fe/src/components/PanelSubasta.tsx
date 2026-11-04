@@ -26,12 +26,21 @@ export function PanelSubasta({ subasta: inicial }: { subasta: AuctionDetail }) {
   const { usuario } = useSesion()
   const ahora = useAhora()
   const [subasta, setSubasta] = useState(inicial)
+  const [mostrarToastGanador, setMostrarToastGanador] = useState(false)
 
   useSubscription(AUCTION_UPDATED, {
     variables: { auctionId: inicial.id },
     onData: ({ data }) => {
       const nueva = data.data?.auctionUpdated
-      if (nueva) setSubasta(nueva)
+      if (nueva) {
+        if (subasta.status === 'OPEN' && nueva.status === 'CLOSED') {
+          if (usuario && nueva.winningBid?.bidder.id === usuario.id) {
+            setMostrarToastGanador(true)
+            setTimeout(() => setMostrarToastGanador(false), 6000)
+          }
+        }
+        setSubasta(nueva)
+      }
     },
   })
 
@@ -52,6 +61,12 @@ export function PanelSubasta({ subasta: inicial }: { subasta: AuctionDetail }) {
 
   return (
     <section aria-labelledby="titulo-subasta" className="panel-subasta">
+      {mostrarToastGanador && (
+        <div className="toast-ganador" role="alert">
+          🎉 ¡Felicidades! Has ganado esta subasta.
+        </div>
+      )}
+
       <div className="panel-subasta__cabecera">
         <h2 id="titulo-subasta">Subasta</h2>
         {abierta ? (
