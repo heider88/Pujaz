@@ -19,11 +19,12 @@ class AuthRepository {
     String name,
     String email,
     String password,
+    String role,
   ) async {
     final result = await _client.mutate(mutationOptions(
       registerMutation,
       variables: {
-        'input': {'name': name.trim(), 'email': email.trim(), 'password': password},
+        'input': {'name': name.trim(), 'email': email.trim(), 'password': password, 'role': role},
       },
     ));
     _throwIfError(result);
