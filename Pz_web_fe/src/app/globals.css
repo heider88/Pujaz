@@ -158,6 +158,21 @@ a:hover {
   color: var(--gris);
 }
 
+/* Saludo y rol van juntos; el gap de 16px separa este grupo de «Cerrar sesión». */
+.layout-saludo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.layout-rol {
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 0.8rem;
+  color: var(--tinta-suave);
+}
+
 .layout-main {
   max-width: var(--ancho);
   margin: 0 auto;
