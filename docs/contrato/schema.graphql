@@ -80,6 +80,7 @@ enum MovementType {
   DEPOSIT   # Recarga
   RESERVE   # Saldo reservado al pujar
   REFUND    # Reintegro: alguien superó la puja y el saldo vuelve a estar disponible
+  CHARGE    # Cobro: la subasta cerró y el ganador paga con lo que tenía reservado
 }
 
 type WalletMovement {

@@ -1,7 +1,7 @@
 // Operaciones GraphQL de la billetera (contrato: wallet, deposit). Requieren sesión.
 import { gql, type TypedDocumentNode } from '@apollo/client'
 
-export type TipoMovimiento = 'DEPOSIT' | 'RESERVE' | 'REFUND'
+export type TipoMovimiento = 'DEPOSIT' | 'RESERVE' | 'REFUND' | 'CHARGE'
 
 export interface Movimiento {
   id: string

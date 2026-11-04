@@ -183,11 +183,11 @@ function Perfil({ usuario }: { usuario: Usuario }) {
         )}
 
         <hr style={{ margin: '2rem 0' }} />
-        <h2>Mis Entregas</h2>
+        <h2>Mis entregas</h2>
         <EntregasUsuario />
 
         <hr style={{ margin: '2rem 0' }} />
-        <h2>Mis Notificaciones</h2>
+        <h2>Mis notificaciones</h2>
         <NotificacionesUsuario />
       </section>
     </div>
