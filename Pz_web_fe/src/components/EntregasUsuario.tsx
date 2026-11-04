@@ -21,8 +21,19 @@ const MY_DELIVERIES = gql`
   }
 `
 
+interface DeliveryData {
+  id: string
+  status: string
+  amount: number
+  createdAt: string
+  auction: {
+    id: string
+    item: { name: string }
+  }
+}
+
 export function EntregasUsuario() {
-  const { data, loading, error } = useQuery<any>(MY_DELIVERIES)
+  const { data, loading, error } = useQuery<{ myDeliveries: DeliveryData[] }>(MY_DELIVERIES)
 
   if (loading) return <p>Cargando entregas...</p>
   if (error) return <p className="mensaje-error">Error al cargar entregas.</p>
@@ -35,7 +46,7 @@ export function EntregasUsuario() {
 
   return (
     <ul className="lista-basica">
-      {entregas.map((e: any) => (
+      {entregas.map((e) => (
         <li key={e.id}>
           <strong>{e.auction.item.name}</strong>
           <p>Monto pagado: {formatearPrecio(e.amount)}</p>

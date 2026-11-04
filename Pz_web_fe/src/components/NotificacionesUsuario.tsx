@@ -15,8 +15,15 @@ const MY_NOTIFICATIONS = gql`
   }
 `
 
+interface NotificationData {
+  id: string
+  type: string
+  message: string
+  createdAt: string
+}
+
 export function NotificacionesUsuario() {
-  const { data, loading, error } = useQuery<any>(MY_NOTIFICATIONS)
+  const { data, loading, error } = useQuery<{ myNotifications: NotificationData[] }>(MY_NOTIFICATIONS)
 
   if (loading) return <p>Cargando notificaciones...</p>
   if (error) return <p className="mensaje-error">Error al cargar notificaciones.</p>
@@ -29,7 +36,7 @@ export function NotificacionesUsuario() {
 
   return (
     <ul className="lista-basica">
-      {notifs.map((n: any) => (
+      {notifs.map((n) => (
         <li key={n.id}>
           <p><strong>{n.type === 'WELCOME' ? '👋 ' : n.type === 'AUCTION_WON' ? '🎉 ' : '🔔 '}{n.message}</strong></p>
           <p className="fecha">{formatearFecha(n.createdAt)}</p>
