@@ -78,7 +78,10 @@ export function Encabezado() {
       </Suspense>
       {usuario && (
         <div className="layout-usuario">
-          <span>Hola, {usuario.name}</span> <span className="layout-rol">({usuario.role})</span>
+          <span className="layout-saludo">
+            <span>Hola, {usuario.name}</span>
+            <span className="layout-rol">{usuario.role === 'vendedor' ? 'Vendedor' : 'Comprador'}</span>
+          </span>
           <button type="button" className="boton-enlace" onClick={salir}>
             Cerrar sesión
           </button>

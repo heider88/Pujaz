@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [Pz_subastas_cl, Pz_billetera_cl, services/Pz_cierre_cl]
+        service: [Pz_subastas_cl, Pz_billetera_cl, Pz_cierre_cl]
     services:
       postgres:
         image: postgres:15
@@ -88,7 +88,7 @@ jobs:
             requirements: requirements.txt
           - service: Pz_postpuja_cl
             requirements: requirements.txt
-          - service: services/Pz_notificaciones_cl
+          - service: Pz_notificaciones_cl
             requirements: requirements-dev.txt
     steps:
       - uses: actions/checkout@v4

@@ -10,10 +10,16 @@ const NOMBRE_MOVIMIENTO: Record<TipoMovimiento, string> = {
   DEPOSIT: 'Recarga',
   RESERVE: 'Reserva por puja',
   REFUND: 'Reintegro',
+  CHARGE: 'Cobro por subasta ganada',
+}
+
+// Reservar y cobrar sacan plata; recargar y reintegrar la devuelven.
+function esSalida(tipo: TipoMovimiento): boolean {
+  return tipo === 'RESERVE' || tipo === 'CHARGE'
 }
 
 function signo(tipo: TipoMovimiento): string {
-  return tipo === 'RESERVE' ? '−' : '+'
+  return esSalida(tipo) ? '−' : '+'
 }
 
 export function BilleteraUsuario({ wallet }: { wallet: Billetera }) {
@@ -126,7 +132,7 @@ export function BilleteraUsuario({ wallet }: { wallet: Billetera }) {
               <tr key={m.id}>
                 <td>{formatearFecha(m.createdAt)}</td>
                 <td>{NOMBRE_MOVIMIENTO[m.type]}</td>
-                <td className={m.type === 'RESERVE' ? 'monto-negativo' : 'monto-positivo'}>
+                <td className={esSalida(m.type) ? 'monto-negativo' : 'monto-positivo'}>
                   {signo(m.type)} {formatearPrecio(m.amount)}
                 </td>
                 <td>
