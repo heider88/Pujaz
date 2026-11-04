@@ -78,7 +78,7 @@ export function Encabezado() {
       </Suspense>
       {usuario && (
         <div className="layout-usuario">
-          <span>Hola, {usuario.name}</span>
+          <span>Hola, {usuario.name} ({usuario.role})</span>
           <button type="button" className="boton-enlace" onClick={salir}>
             Cerrar sesión
           </button>

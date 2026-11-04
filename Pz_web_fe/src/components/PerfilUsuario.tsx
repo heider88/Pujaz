@@ -116,6 +116,7 @@ function Perfil({ usuario }: { usuario: Usuario }) {
         <Avatar nombre={actual.name} grande />
         <p className="perfil__nombre">{actual.name}</p>
         <p className="perfil__correo">{actual.email}</p>
+        <p className="categoria">Rol: {actual.role === 'vendedor' ? 'Vendedor' : 'Comprador'}</p>
         <p className="categoria">Miembro desde {formatearFecha(usuario.createdAt)}</p>
         <SaldoResumen />
       </aside>

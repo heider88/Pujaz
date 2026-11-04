@@ -22,7 +22,7 @@ const MY_DELIVERIES = gql`
 `
 
 export function EntregasUsuario() {
-  const { data, loading, error } = useQuery(MY_DELIVERIES)
+  const { data, loading, error } = useQuery<any>(MY_DELIVERIES)
 
   if (loading) return <p>Cargando entregas...</p>
   if (error) return <p className="mensaje-error">Error al cargar entregas.</p>

@@ -16,7 +16,7 @@ const MY_NOTIFICATIONS = gql`
 `
 
 export function NotificacionesUsuario() {
-  const { data, loading, error } = useQuery(MY_NOTIFICATIONS)
+  const { data, loading, error } = useQuery<any>(MY_NOTIFICATIONS)
 
   if (loading) return <p>Cargando notificaciones...</p>
   if (error) return <p className="mensaje-error">Error al cargar notificaciones.</p>
