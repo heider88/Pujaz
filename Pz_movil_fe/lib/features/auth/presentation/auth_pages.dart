@@ -60,6 +60,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  // El contrato v3 pide el rol al registrarse: solo quien vende puede publicar piezas.
+  String _role = 'comprador';
   bool _loading = false;
   String? _error;
 
@@ -74,7 +76,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _submit() async {
     setState(() { _loading = true; _error = null; });
     final session = SessionScope.of(context);
-    final ok = await session.register(_name.text, _email.text, _password.text);
+    final ok = await session.register(_name.text, _email.text, _password.text, _role);
     if (!mounted) return;
     setState(() { _loading = false; _error = ok ? null : graphQlErrorMessage(session.error ?? ''); });
     if (ok) context.go('/');
@@ -89,6 +91,20 @@ class _RegisterPageState extends State<RegisterPage> {
           TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Correo')),
           const SizedBox(height: 12),
           TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Contraseña (mínimo 8 caracteres)')),
+          const SizedBox(height: 20),
+          Align(alignment: Alignment.centerLeft, child: Text('¿Para qué vas a usar Pujaz?', style: Theme.of(context).textTheme.labelLarge)),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'comprador', label: Text('Comprar')),
+                ButtonSegment(value: 'vendedor', label: Text('Vender')),
+              ],
+              selected: {_role},
+              onSelectionChanged: (seleccion) => setState(() => _role = seleccion.first),
+            ),
+          ),
           const SizedBox(height: 20),
           SizedBox(width: double.infinity, child: FilledButton(onPressed: _loading ? null : _submit, child: Text(_loading ? 'Creando…' : 'Registrarme'))),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
