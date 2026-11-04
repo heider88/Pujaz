@@ -128,7 +128,7 @@ func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, req 
 		})
 	}
 
-	bid, err := s.repo.CreateBid(ctx, tx, auctionID, userID, amount, reservationID)
+	bid, err := s.repo.CreateBid(ctx, tx, auctionID, userID, req.UserName, amount, reservationID)
 	if err != nil {
 		return nil, err
 	}

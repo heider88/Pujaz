@@ -46,9 +46,8 @@ func (r *AuctionRepository) getAuction(ctx context.Context, txOrDB interface {
 
 	// Get winning bid
 	bidQuery := `
-		SELECT b.id, b.amount, b.created_at, b.reservation_id, u.id, u.name 
+		SELECT b.id, b.amount, b.created_at, b.reservation_id, b.user_id, b.user_name 
 		FROM bids b
-		JOIN users u ON b.user_id = u.id
 		WHERE b.auction_id = $1
 		ORDER BY b.amount DESC, b.created_at ASC
 		LIMIT 1
@@ -66,10 +65,10 @@ func (r *AuctionRepository) getAuction(ctx context.Context, txOrDB interface {
 
 	// Get participants
 	partQuery := `
-		SELECT DISTINCT u.id, u.name 
+		SELECT b.user_id, MAX(b.user_name) 
 		FROM bids b
-		JOIN users u ON b.user_id = u.id
 		WHERE b.auction_id = $1
+		GROUP BY b.user_id
 	`
 	rows, err := txOrDB.QueryContext(ctx, partQuery, auctionID)
 	if err == nil {
@@ -135,9 +134,9 @@ func (r *AuctionRepository) UpdateAuctionPrice(ctx context.Context, tx *sql.Tx, 
 	return err
 }
 
-func (r *AuctionRepository) CreateBid(ctx context.Context, tx *sql.Tx, auctionID int, userID int, amount float64, reservationID string) (*models.Bid, error) {
+func (r *AuctionRepository) CreateBid(ctx context.Context, tx *sql.Tx, auctionID int, userID int, userName string, amount float64, reservationID string) (*models.Bid, error) {
 	var bidID int
-	err := tx.QueryRowContext(ctx, "INSERT INTO bids (auction_id, user_id, amount, reservation_id) VALUES ($1, $2, $3, $4) RETURNING id", auctionID, userID, amount, reservationID).Scan(&bidID)
+	err := tx.QueryRowContext(ctx, "INSERT INTO bids (auction_id, user_id, user_name, amount, reservation_id) VALUES ($1, $2, $3, $4, $5) RETURNING id", auctionID, userID, userName, amount, reservationID).Scan(&bidID)
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +144,8 @@ func (r *AuctionRepository) CreateBid(ctx context.Context, tx *sql.Tx, auctionID
 	var bid models.Bid
 	var uID int
 	err = tx.QueryRowContext(ctx, `
-		SELECT b.id, b.amount, b.created_at, u.id, u.name 
-		FROM bids b JOIN users u ON b.user_id = u.id WHERE b.id = $1
+		SELECT b.id, b.amount, b.created_at, b.user_id, b.user_name 
+		FROM bids b WHERE b.id = $1
 	`, bidID).Scan(&bidID, &bid.Amount, &bid.CreatedAt, &uID, &bid.Bidder.Name)
 	if err != nil {
 		return nil, err

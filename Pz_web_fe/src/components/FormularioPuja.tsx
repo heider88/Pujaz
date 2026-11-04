@@ -110,7 +110,9 @@ export function FormularioPuja({ subasta, onPujaAceptada }: Props) {
             onClick={() => {
               const actual = Number(monto)
               const base = actual && actual >= subasta.currentPrice ? actual : subasta.currentPrice
-              setMonto(String(base + incremento))
+              setMonto(String(Number(base) + incremento))
+              setError(null)
+              setPujaAceptada(null)
             }}
           >
             + {formatearPrecio(incremento)}
@@ -127,7 +129,20 @@ export function FormularioPuja({ subasta, onPujaAceptada }: Props) {
         required
         placeholder={`Mínimo ${formatearPrecio(subasta.currentPrice + 100)}`}
         value={monto}
-        onChange={(evento) => setMonto(evento.target.value)}
+        onChange={(evento) => {
+          setMonto(evento.target.value)
+          setError(null)
+          setPujaAceptada(null)
+          evento.target.setCustomValidity('')
+        }}
+        onInvalid={(evento) => {
+          const target = evento.target as HTMLInputElement
+          if (target.validity.rangeUnderflow) {
+            target.setCustomValidity(
+              `El valor debe ser superior o igual a ${formatearPrecio(subasta.currentPrice + 100)}`,
+            )
+          }
+        }}
       />
       {disponible !== undefined && Number(monto) > disponible && (
         <p className="ayuda ayuda--aviso">Tu oferta supera tu saldo disponible.</p>
