@@ -1,8 +1,8 @@
 import { createPubSub } from 'graphql-yoga';
 import type { Auction } from '../modules/auctions/index.js';
 
-// Eventos en vivo, en memoria del proceso. Funciona porque el prototipo corre una sola copia del
-// Gateway: con varias copias, un suscriptor no vería las pujas hechas en otra.
+// Reparto local de auctionUpdated a los WebSocket de esta copia del Gateway. Lo que se reparte llega
+// del broker (PrecioActualizado), así que cada copia ve también las pujas hechas en las demás.
 export type GatewayPubSub = ReturnType<typeof createGatewayPubSub>;
 
 export function createGatewayPubSub() {

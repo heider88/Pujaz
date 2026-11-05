@@ -105,7 +105,7 @@ func (r *WalletRepository) Deposit(ctx context.Context, userID int, amount float
 	return r.GetWalletByUserID(ctx, userID)
 }
 
-func (r *WalletRepository) Reserve(ctx context.Context, userID int, amount float64, auctionID int) (*models.WalletResponse, error) {
+func (r *WalletRepository) Reserve(ctx context.Context, userID int, amount float64, auctionID int) (*models.ReservationResult, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -133,19 +133,39 @@ func (r *WalletRepository) Reserve(ctx context.Context, userID int, amount float
 		return nil, err
 	}
 
-	_, err = tx.ExecContext(ctx, "INSERT INTO wallet_movements (wallet_id, amount, type, auction_id) VALUES ($1, $2, 'reserva por puja', $3)", wID, amount, auctionID)
+	var mID int
+	err = tx.QueryRowContext(ctx, "INSERT INTO wallet_movements (wallet_id, amount, type, auction_id) VALUES ($1, $2, 'reserva por puja', $3) RETURNING id", wID, amount, auctionID).Scan(&mID)
 	if err != nil {
 		return nil, err
 	}
+
+	var res models.Reservation
+	err = tx.QueryRowContext(ctx, "INSERT INTO reservations (user_id, auction_id, amount, status) VALUES ($1, $2, $3, 'ACTIVE') RETURNING id, created_at", userID, auctionID, amount).Scan(&res.ID, &res.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	res.UserID = strconv.Itoa(userID)
+	res.AuctionID = strconv.Itoa(auctionID)
+	res.Amount = amount
+	res.Status = "ACTIVE"
 
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
 
-	return r.GetWalletByUserID(ctx, userID)
+	wallet, err := r.GetWalletByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.ReservationResult{
+		Reservation: res,
+		Wallet:      *wallet,
+	}, nil
 }
 
 func (r *WalletRepository) Refund(ctx context.Context, userID int, amount float64, auctionID int) (*models.WalletResponse, error) {
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err

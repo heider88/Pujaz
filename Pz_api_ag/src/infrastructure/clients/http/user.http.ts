@@ -3,7 +3,7 @@ import type { Credentials, NewUser, User, UserChanges, UserClient } from '../../
 import { parseUser } from '../../http/contract.js';
 import type { HttpClient } from '../../http/http-client.js';
 
-// MS transaccional, rest.md §1.1.
+// Pz_usuarios_cl, rest.md §1.
 export class HttpUserClient implements UserClient {
   constructor(private readonly http: HttpClient) {}
 

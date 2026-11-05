@@ -50,8 +50,8 @@ class SessionController extends ChangeNotifier {
         () => _repository.login(email, password),
       );
 
-  Future<bool> register(String name, String email, String password) => _authenticate(
-        () => _repository.register(name, email, password),
+  Future<bool> register(String name, String email, String password, String role) => _authenticate(
+        () => _repository.register(name, email, password, role),
       );
 
   Future<bool> _authenticate(Future<Map<String, dynamic>> Function() action) async {

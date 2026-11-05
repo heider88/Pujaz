@@ -72,15 +72,17 @@ func (s *AuctionService) GetAuction(ctx context.Context, idStr string) (*models.
 	return auction, nil
 }
 
-func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, userIDStr string, amount float64) (*models.PlaceBidResponse, error) {
+func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, req models.PlaceBidRequest) (*models.PlaceBidResponse, error) {
 	auctionID, err := strconv.Atoi(auctionIDStr)
 	if err != nil {
 		return nil, ErrNotFound
 	}
-	userID, err := strconv.Atoi(userIDStr)
+	userID, err := strconv.Atoi(req.UserID)
 	if err != nil {
 		return nil, errors.New("BAD_USER_INPUT")
 	}
+	amount := req.Amount
+	reservationID := req.ReservationID
 
 	db := s.repo.DB()
 	tx, err := db.BeginTx(ctx, nil)
@@ -103,53 +105,48 @@ func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, user
 		return nil, ErrBidTooLow
 	}
 
-	var prevReservedForThisUser float64 = 0
+	var releasedReservationID *string
 	var prevWinnerID int = 0
 	if auction.WinningBid != nil {
 		wUID, _ := strconv.Atoi(auction.WinningBid.Bidder.ID)
 		if wUID == userID {
-			prevReservedForThisUser = auction.WinningBid.Amount
+			// If it's the same user, we will release their old reservation
+			resID := auction.WinningBid.ReservationID
+			releasedReservationID = &resID
 		}
 		prevWinnerID = wUID
 	}
 
-	// Calculate net amount to reserve
-	netReservation := amount - prevReservedForThisUser
-
-	err = ReserveFunds(userID, netReservation, auctionID)
-	if err != nil {
-		return nil, err
-	}
-
 	if prevWinnerID != 0 && prevWinnerID != userID {
 		PublishEvent("eventos", "PujaSuperada", map[string]interface{}{
-			"auctionId": auctionID,
-			"userId":    prevWinnerID,
-			"amount":    auction.WinningBid.Amount,
+			"auctionId":     auctionID,
+			"itemId":        auction.ItemID,
+			"userId":        prevWinnerID,
+			"reservationId": auction.WinningBid.ReservationID,
+			"amount":        auction.WinningBid.Amount,
+			"newAmount":     amount,
 		})
 	}
 
-	PublishEvent("eventos", "PrecioActualizado", map[string]interface{}{
-		"auctionId": auctionID,
-		"price":     amount,
-	})
-
-	bid, err := s.repo.CreateBid(ctx, tx, auctionID, userID, amount)
+	bid, err := s.repo.CreateBid(ctx, tx, auctionID, userID, req.UserName, amount, reservationID)
 	if err != nil {
-		// Compensating action
-		_ = RefundFunds(userID, netReservation, auctionID)
 		return nil, err
 	}
 	err = s.repo.UpdateAuctionPrice(ctx, tx, auctionID, amount)
 	if err != nil {
-		_ = RefundFunds(userID, netReservation, auctionID)
 		return nil, err
 	}
 
 	if err = tx.Commit(); err != nil {
-		_ = RefundFunds(userID, netReservation, auctionID)
 		return nil, err
 	}
+
+	PublishEvent("eventos", "PrecioActualizado", map[string]interface{}{
+		"auctionId":    strconv.Itoa(auctionID),
+		"currentPrice": amount,
+		"bidId":        bid.ID,
+		"bidderId":     req.UserID,
+	})
 
 	updatedAuction, err := s.repo.GetAuctionByID(ctx, auctionID)
 	if err != nil {
@@ -158,8 +155,9 @@ func (s *AuctionService) PlaceBid(ctx context.Context, auctionIDStr string, user
 	s.updateStatus(updatedAuction)
 
 	return &models.PlaceBidResponse{
-		Bid:     *bid,
-		Auction: *updatedAuction,
+		Bid:                   *bid,
+		Auction:               *updatedAuction,
+		ReleasedReservationID: releasedReservationID,
 	}, nil
 }
 
@@ -202,10 +200,13 @@ func (s *AuctionService) CloseExpiredAuctions(ctx context.Context) (int, error) 
 		if err == nil {
 			count++
 			PublishEvent("eventos", "SubastaCerrada", map[string]interface{}{
-				"auctionId": strconv.Itoa(a.IDInt),
-				"itemId":    a.ItemID,
-				"winnerId":  a.WinnerID,
-				"amount":    a.CurrentPrice,
+				"auctionId":      strconv.Itoa(a.IDInt),
+				"itemId":         a.ItemID,
+				"winnerId":       a.WinnerID,
+				"amount":         a.CurrentPrice,
+				"reservationId":  a.ReservationID,
+				"participantIds": a.Participants,
+				"closedAt":       time.Now().UTC().Format(time.RFC3339),
 			})
 		}
 	}

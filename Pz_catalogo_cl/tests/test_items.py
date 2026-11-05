@@ -1,20 +1,13 @@
 import pytest
 from fastapi.testclient import TestClient
-import mongomock
-from unittest.mock import patch
 
-mock_client = mongomock.MongoClient()
-# Use the same database name as the application
-mock_db = mock_client["pujaz_catalogo"]
-mock_collection = mock_db["articulos"]
-
-with patch('pymongo.MongoClient', return_value=mock_client):
-    from src.main import app
+from src.main import app
+from src.infrastructure.db.mongo import items_collection
 
 client = TestClient(app)
 
 def setup_function():
-    mock_collection.delete_many({})
+    items_collection.delete_many({})
 
 def test_create_item_valid():
     response = client.post("/items", json={"name": "Silla", "description": "Silla de madera"})

@@ -34,12 +34,20 @@ describe('arranque del Gateway', () => {
     const result = startGateway({
       USE_MOCKS: 'false',
       JWT_SECRET: VALID_SECRET,
-      MS_TRANSACCIONAL_URL: 'http://pz-transaccional-cl:8080',
+      MS_USUARIOS_URL: 'http://pz-usuarios-cl:8080',
+      MS_SUBASTAS_URL: 'http://pz-subastas-cl:8081',
+      MS_BILLETERA_URL: 'http://pz-billetera-cl:8082',
       MS_CATALOGO_URL: 'http://pz-catalogo-cl:8000',
+      MS_POSTPUJA_URL: 'http://pz-postpuja-cl:8000',
+      MS_NOTIFICACIONES_URL: 'http://pz-notificaciones-cl:8000',
+      // Sin broker en ese puerto: el Gateway debe arrancar igual y reintentar.
+      RABBITMQ_URL: 'amqp://guest:guest@127.0.0.1:1/',
       PORT: '4987',
     });
     // Sigue escuchando hasta que spawnSync lo detiene por tiempo: no terminó con error.
-    expect(result.stdout).toContain('MS transaccional http://pz-transaccional-cl:8080');
+    expect(result.stdout).toContain('MS usuarios http://pz-usuarios-cl:8080');
+    expect(result.stdout).toContain('notificaciones http://pz-notificaciones-cl:8000');
+    expect(result.stdout).toContain('broker de eventos');
     expect(result.stderr).not.toContain('configuración inválida');
   });
 });

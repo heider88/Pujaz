@@ -13,10 +13,11 @@ type UserSummary struct {
 }
 
 type Bid struct {
-	ID        string      `json:"id"`
-	Amount    float64     `json:"amount"`
-	Bidder    UserSummary `json:"bidder"`
-	CreatedAt time.Time   `json:"createdAt"`
+	ID            string      `json:"id"`
+	Amount        float64     `json:"amount"`
+	Bidder        UserSummary `json:"bidder"`
+	ReservationID string      `json:"reservationId"`
+	CreatedAt     time.Time   `json:"createdAt"`
 }
 
 type Auction struct {
@@ -31,13 +32,16 @@ type Auction struct {
 }
 
 type PlaceBidRequest struct {
-	UserID string  `json:"userId"`
-	Amount float64 `json:"amount"`
+	UserID        string  `json:"userId"`
+	UserName      string  `json:"userName"`
+	Amount        float64 `json:"amount"`
+	ReservationID string  `json:"reservationId"`
 }
 
 type PlaceBidResponse struct {
-	Bid     Bid     `json:"bid"`
-	Auction Auction `json:"auction"`
+	Bid                   Bid     `json:"bid"`
+	Auction               Auction `json:"auction"`
+	ReleasedReservationID *string `json:"releasedReservationId"`
 }
 
 type WalletMovement struct {

@@ -6,9 +6,13 @@ export interface Config {
   jwtSecret: string;
   jwtExpiresIn: string;
   useMocks: boolean;
+  msUsuariosUrl: string | null;
   msSubastasUrl: string | null;
   msBilleteraUrl: string | null;
   msCatalogoUrl: string | null;
+  msPostpujaUrl: string | null;
+  msNotificacionesUrl: string | null;
+  rabbitmqUrl: string | null;
   port: number;
   corsOrigin: string;
 }
@@ -29,18 +33,27 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
   }
 
   const useMocks = parseBoolean('USE_MOCKS', env.USE_MOCKS, false);
+  const msUsuariosUrl = env.MS_USUARIOS_URL || null;
   const msSubastasUrl = env.MS_SUBASTAS_URL || null;
   const msBilleteraUrl = env.MS_BILLETERA_URL || null;
   const msCatalogoUrl = env.MS_CATALOGO_URL || null;
+  const msPostpujaUrl = env.MS_POSTPUJA_URL || null;
+  const msNotificacionesUrl = env.MS_NOTIFICACIONES_URL || null;
+  const rabbitmqUrl = env.RABBITMQ_URL || null;
   if (!useMocks) {
-    if (!msSubastasUrl) {
-      throw new ConfigError('Falta MS_SUBASTAS_URL (obligatoria si USE_MOCKS=false).');
-    }
-    if (!msBilleteraUrl) {
-      throw new ConfigError('Falta MS_BILLETERA_URL (obligatoria si USE_MOCKS=false).');
-    }
-    if (!msCatalogoUrl) {
-      throw new ConfigError('Falta MS_CATALOGO_URL (obligatoria si USE_MOCKS=false).');
+    const required = {
+      MS_USUARIOS_URL: msUsuariosUrl,
+      MS_SUBASTAS_URL: msSubastasUrl,
+      MS_BILLETERA_URL: msBilleteraUrl,
+      MS_CATALOGO_URL: msCatalogoUrl,
+      MS_POSTPUJA_URL: msPostpujaUrl,
+      MS_NOTIFICACIONES_URL: msNotificacionesUrl,
+      RABBITMQ_URL: rabbitmqUrl,
+    };
+    for (const [name, value] of Object.entries(required)) {
+      if (!value) {
+        throw new ConfigError(`Falta ${name} (obligatoria si USE_MOCKS=false).`);
+      }
     }
   }
 
@@ -48,9 +61,13 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || '24h',
     useMocks,
+    msUsuariosUrl,
     msSubastasUrl,
     msBilleteraUrl,
     msCatalogoUrl,
+    msPostpujaUrl,
+    msNotificacionesUrl,
+    rabbitmqUrl,
     port: parsePort(env.PORT),
     corsOrigin: env.CORS_ORIGIN || 'http://localhost:5173',
   };

@@ -12,7 +12,7 @@ func SetupUserRoutes(mux *http.ServeMux, userCtrl *controllers.UserController, w
 	
 	mux.HandleFunc("/users/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
-		if strings.Contains(path, "/wallet") || strings.Contains(path, "/deposits") {
+		if strings.Contains(path, "/wallet") || strings.Contains(path, "/deposits") || strings.Contains(path, "/reserve") || strings.Contains(path, "/refund") {
 			walletCtrl.HandleUsers(w, r)
 		} else {
 			userCtrl.HandleUsers(w, r)

@@ -4,6 +4,7 @@ import 'package:graphql_flutter/graphql_flutter.dart';
 
 import '../../../core/formatters/formatters.dart';
 import '../../../core/graphql/graphql_documents.dart';
+import '../../../core/images/image_url.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
 class AuctionListPage extends StatefulWidget {
@@ -90,7 +91,7 @@ class _AuctionCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (images.isNotEmpty)
-              Image.network(images.first as String, height: 170, width: double.infinity, fit: BoxFit.cover,
+              Image.network(resolveImageUrl(images.first as String), height: 170, width: double.infinity, fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const SizedBox(height: 170, child: Icon(Icons.image_not_supported_outlined, size: 48))),
             Padding(
               padding: const EdgeInsets.all(16),

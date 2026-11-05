@@ -1,4 +1,4 @@
-// Contrato con el MS transaccional para subastas (rest.md §1.3).
+// Contrato con Pz_subastas_cl (rest.md §3).
 
 export type AuctionStatus = 'OPEN' | 'CLOSED';
 
@@ -26,17 +26,28 @@ export interface Auction {
   status: AuctionStatus;
 }
 
-// Cuerpo de POST /auctions (rest.md §1.3).
+// Cuerpo de POST /auctions (rest.md §3.1).
 export interface NewAuction {
   itemId: string;
   basePrice: number;
   endsAt: string;
 }
 
-// Respuesta de POST /auctions/{auctionId}/bids (rest.md §1.3).
+// Cuerpo de POST /auctions/{auctionId}/bids (rest.md §3.2). El Gateway ya reservó el monto en la
+// billetera; userName va porque subastas no tiene los datos de los usuarios.
+export interface NewBid {
+  userId: string;
+  userName: string;
+  amount: number;
+  reservationId: string;
+}
+
+// Respuesta de POST /auctions/{auctionId}/bids (rest.md §3.2).
 export interface PlacedBid {
   bid: Bid;
   auction: Auction;
+  // Reserva anterior del mismo usuario cuando sube su propia puja; el Gateway la libera. Si no, null.
+  releasedReservationId: string | null;
 }
 
 export interface AuctionClient {
@@ -46,6 +57,6 @@ export interface AuctionClient {
   getAuctionsByIds(ids: string[]): Promise<Auction[]>;
   /** POST /auctions · Errores: BAD_USER_INPUT (endsAt en el pasado, basePrice <= 0 o ya existe para ese ítem) */
   createAuction(input: NewAuction): Promise<Auction>;
-  /** POST /auctions/{auctionId}/bids · Errores: NOT_FOUND, AUCTION_CLOSED, BID_TOO_LOW, INSUFFICIENT_FUNDS */
-  placeBid(auctionId: string, userId: string, amount: number): Promise<PlacedBid>;
+  /** POST /auctions/{auctionId}/bids · paso 2 de la Saga · Errores: NOT_FOUND, AUCTION_CLOSED, BID_TOO_LOW */
+  placeBid(auctionId: string, input: NewBid): Promise<PlacedBid>;
 }

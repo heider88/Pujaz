@@ -4,6 +4,7 @@ import 'package:graphql_flutter/graphql_flutter.dart';
 import '../../../core/errors/graphql_error_mapper.dart';
 import '../../../core/formatters/formatters.dart';
 import '../../../core/graphql/graphql_documents.dart';
+import '../../../core/images/image_url.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
 class AuctionDetailPage extends StatelessWidget {
@@ -28,9 +29,10 @@ class AuctionDetailPage extends StatelessWidget {
               SliverToBoxAdapter(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   if (images.isNotEmpty)
-                    SizedBox(height: 240, child: PageView.builder(
+                    // La foto se ve completa (contain), sin recortes, como en el detalle de la web.
+                    Container(height: 280, color: const Color(0xFFF4F5F7), child: PageView.builder(
                       itemCount: images.length,
-                      itemBuilder: (_, index) => Image.network(images[index] as String, fit: BoxFit.cover,
+                      itemBuilder: (_, index) => Image.network(resolveImageUrl(images[index] as String), fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, size: 56)),
                     )),
                   Padding(
@@ -117,6 +119,17 @@ class _AuctionPanelState extends State<_AuctionPanel> {
     );
   }
 
+  // Quién va ganando, como en el panel de la web.
+  String _winnerText(Map<String, dynamic> auction) {
+    final winningBid = auction['winningBid'] as Map<String, dynamic>?;
+    if (winningBid == null) return 'Todavía no hay pujas. ¡Sé la primera persona en pujar!';
+    final bidder = winningBid['bidder'] as Map<String, dynamic>?;
+    final name = bidder?['name'] as String? ?? 'Alguien';
+    final participants = (auction['participants'] as List<dynamic>? ?? const []).length;
+    final total = participants == 1 ? '1 participante' : '$participants participantes';
+    return 'Va ganando $name con ${formatCop(winningBid['amount'] as num)} · $total';
+  }
+
   Widget _buildPanel(BuildContext context, Map<String, dynamic> auction) {
     final isOpen = auction['status'] == 'OPEN';
     return Padding(
@@ -127,9 +140,14 @@ class _AuctionPanelState extends State<_AuctionPanel> {
         Text('Precio actual', style: Theme.of(context).textTheme.labelLarge),
         Text(formatCop(auction['currentPrice'] as num), style: Theme.of(context).textTheme.headlineSmall),
         if (auction['endsAt'] != null) Text('Termina: ${formatDate(auction['endsAt'] as String)}'),
+        const SizedBox(height: 12),
+        Text(_winnerText(auction)),
         const SizedBox(height: 16),
         if (isOpen) ...[
-          TextField(controller: _amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Tu puja (COP)')),
+          TextField(controller: _amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(
+            labelText: 'Tu puja (COP)',
+            hintText: 'Mínimo ${formatCop((auction['currentPrice'] as num) + 100)}',
+          )),
           const SizedBox(height: 12),
           SizedBox(width: double.infinity, child: FilledButton(onPressed: _sending ? null : _bid, child: Text(_sending ? 'Enviando…' : 'Pujar'))),
         ] else const Text('Esta subasta está cerrada.'),

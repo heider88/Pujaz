@@ -1,5 +1,12 @@
 import { AppError } from '../../../core/errors.js';
-import type { MovementType, Wallet, WalletClient, WalletMovement } from '../../../modules/wallet/index.js';
+import type {
+  MovementType,
+  Reservation,
+  ReservationResult,
+  Wallet,
+  WalletClient,
+  WalletMovement,
+} from '../../../modules/wallet/index.js';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -7,7 +14,7 @@ const HOUR = 60 * 60 * 1000;
 export const VALID_PROMO_CODE = 'PROMO2026';
 
 // Coherente con la subasta 12 de auction.mock.ts: Luis pujó 110000, Ana lo superó con 120000
-// y a Luis se le devolvió su monto. La billetera de Ana es el ejemplo de rest.md §1.2.
+// y a Luis se le devolvió su monto. La billetera de Ana es el ejemplo de rest.md §2.
 function seedWallets(now: number): Wallet[] {
   const at = (hoursAgo: number) => new Date(now - hoursAgo * HOUR).toISOString();
   return [
@@ -33,9 +40,21 @@ function seedWallets(now: number): Wallet[] {
   ];
 }
 
+// Las reservas de esos movimientos: la de Ana sigue activa (va ganando) y la de Luis se liberó
+// cuando Ana lo superó. Las pujas 54 y 55 de auction.mock.ts apuntan a ellas.
+function seedReservations(now: number): Reservation[] {
+  const at = (hoursAgo: number) => new Date(now - hoursAgo * HOUR).toISOString();
+  return [
+    { id: '301', userId: '7', auctionId: '12', amount: 120000, status: 'ACTIVE', createdAt: at(1) },
+    { id: '303', userId: '9', auctionId: '12', amount: 110000, status: 'RELEASED', createdAt: at(2) },
+  ];
+}
+
 export class MockWalletClient implements WalletClient {
   private readonly wallets: Wallet[] = seedWallets(Date.now());
+  private readonly reservations: Reservation[] = seedReservations(Date.now());
   private nextMovementId = 1000;
+  private nextReservationId = 2000;
 
   async getWallet(userId: string): Promise<Wallet> {
     return structuredClone(this.findOrCreate(userId));
@@ -54,19 +73,46 @@ export class MockWalletClient implements WalletClient {
     return structuredClone(wallet);
   }
 
-  // Solo del cliente falso: los usa MockAuctionClient al pujar, como hace el MS en su transacción.
-  available(userId: string): number {
-    return this.findOrCreate(userId).available;
-  }
-
-  reserve(userId: string, auctionId: string, amount: number): void {
+  // Mismas reglas que el MS (rest.md §2).
+  async reserve(userId: string, auctionId: string, amount: number): Promise<ReservationResult> {
+    if (!(amount > 0)) {
+      throw new AppError('BAD_USER_INPUT', 'El monto a reservar debe ser mayor que cero.');
+    }
     const wallet = this.findOrCreate(userId);
+    if (wallet.available < amount) {
+      throw new AppError('INSUFFICIENT_FUNDS', 'No tienes saldo disponible suficiente.');
+    }
     wallet.available -= amount;
     wallet.reserved += amount;
     wallet.movements.unshift(this.movement('RESERVE', amount, auctionId));
+    const reservation: Reservation = {
+      id: String(this.nextReservationId++),
+      userId,
+      auctionId,
+      amount,
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+    };
+    this.reservations.push(reservation);
+    return structuredClone({ reservation, wallet });
   }
 
-  refund(userId: string, auctionId: string, amount: number): void {
+  // Idempotente: una reserva ya liberada o cobrada se devuelve como está, sin mover saldo.
+  async releaseReservation(userId: string, reservationId: string): Promise<Reservation> {
+    const reservation = this.reservations.find(
+      (candidate) => candidate.id === reservationId && candidate.userId === userId,
+    );
+    if (!reservation) {
+      throw new AppError('NOT_FOUND', 'La reserva no existe.');
+    }
+    if (reservation.status === 'ACTIVE') {
+      this.refund(userId, reservation.auctionId, reservation.amount);
+      reservation.status = 'RELEASED';
+    }
+    return structuredClone(reservation);
+  }
+
+  private refund(userId: string, auctionId: string, amount: number): void {
     const wallet = this.findOrCreate(userId);
     wallet.reserved -= amount;
     wallet.available += amount;

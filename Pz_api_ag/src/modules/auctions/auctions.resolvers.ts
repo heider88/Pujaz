@@ -5,6 +5,10 @@ import type { WalletMovement } from '../wallet/index.js';
 import type { Auction } from './auction.client.js';
 import type { AuctionLoaders, AuctionsService, CreateItemInput } from './auctions.service.js';
 
+// Para los módulos que muestran una subasta por id (entregas, notificaciones): usan el mismo
+// cargador de la petición, así todas las subastas de una consulta salen en una sola llamada.
+export type LoadAuctionById = (auctionId: string, ctx: GatewayContext) => Promise<Auction | null>;
+
 export function createAuctionsResolvers(auctionsService: AuctionsService) {
   // El contexto es un objeto nuevo en cada petición: así los cargadores no se comparten entre peticiones.
   const loadersByRequest = new WeakMap<GatewayContext, AuctionLoaders>();
@@ -18,7 +22,10 @@ export function createAuctionsResolvers(auctionsService: AuctionsService) {
     return current;
   }
 
+  const loadAuctionById: LoadAuctionById = (auctionId, ctx) => loaders(ctx).auctionById.load(auctionId);
+
   return {
+    loadAuctionById,
     Query: {
       auction: (_parent: unknown, args: { itemId: string }, ctx: GatewayContext) =>
         loaders(ctx).auctionByItemId.load(args.itemId),
@@ -60,7 +67,7 @@ export function createAuctionsResolvers(auctionsService: AuctionsService) {
     WalletMovement: {
       // Las recargas no tienen subasta.
       auction: (movement: WalletMovement, _args: unknown, ctx: GatewayContext) =>
-        movement.auctionId === null ? null : loaders(ctx).auctionById.load(movement.auctionId),
+        movement.auctionId === null ? null : loadAuctionById(movement.auctionId, ctx),
     },
   };
 }

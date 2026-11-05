@@ -1,8 +1,8 @@
-import type { Auction, AuctionClient, NewAuction, PlacedBid } from '../../../modules/auctions/index.js';
+import type { Auction, AuctionClient, NewAuction, NewBid, PlacedBid } from '../../../modules/auctions/index.js';
 import { parseAuction, parseListOf, parsePlacedBid } from '../../http/contract.js';
 import type { HttpClient } from '../../http/http-client.js';
 
-// MS transaccional, rest.md §1.3.
+// Pz_subastas_cl, rest.md §3.
 export class HttpAuctionClient implements AuctionClient {
   constructor(private readonly http: HttpClient) {}
 
@@ -19,8 +19,13 @@ export class HttpAuctionClient implements AuctionClient {
     return this.http.get(`/auctions?ids=${joinIds(ids)}`, parseListOf(parseAuction, (auction) => auction.id, ids));
   }
 
-  placeBid(auctionId: string, userId: string, amount: number): Promise<PlacedBid> {
-    return this.http.post(`/auctions/${encodeURIComponent(auctionId)}/bids`, { userId, amount }, parsePlacedBid);
+  placeBid(auctionId: string, input: NewBid): Promise<PlacedBid> {
+    const { userId, userName, amount, reservationId } = input;
+    return this.http.post(
+      `/auctions/${encodeURIComponent(auctionId)}/bids`,
+      { userId, userName, amount, reservationId },
+      parsePlacedBid,
+    );
   }
 
   createAuction(input: NewAuction): Promise<Auction> {

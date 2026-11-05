@@ -158,6 +158,21 @@ a:hover {
   color: var(--gris);
 }
 
+/* Saludo y rol van juntos; el gap de 16px separa este grupo de «Cerrar sesión». */
+.layout-saludo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.layout-rol {
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 0.8rem;
+  color: var(--tinta-suave);
+}
+
 .layout-main {
   max-width: var(--ancho);
   margin: 0 auto;
@@ -475,8 +490,13 @@ textarea:focus-visible {
   border-radius: calc(var(--radio) - 2px);
 }
 
+/* En el detalle la foto se ve completa, sin recortes: si es vertical (como un reloj),
+   quedan bandas a los lados en vez de cortarle la parte de arriba y de abajo. */
 .imagen-lote--grande {
-  aspect-ratio: 3 / 2;
+  aspect-ratio: 4 / 3;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #f4f5f7;
 }
 
 .miniaturas {
@@ -1138,6 +1158,56 @@ section.pagina-angosta h2 {
   color: var(--tinta);
 }
 
+/* ---------- Registro: comprar o vender ---------- */
+
+.selector-rol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0 4px;
+  padding: 0;
+  border: 0;
+}
+
+.selector-rol legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 0.95rem;
+  color: var(--texto);
+}
+
+.opcion-rol {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  cursor: pointer;
+}
+
+.opcion-rol--activa {
+  border-color: var(--laton);
+  box-shadow: inset 0 0 0 1px var(--laton);
+}
+
+.opcion-rol input {
+  margin-top: 4px;
+  accent-color: var(--tinta);
+}
+
+.opcion-rol strong {
+  display: block;
+  color: var(--tinta);
+}
+
+.opcion-rol small {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--gris);
+  line-height: 1.35;
+}
+
 /* ---------- Publicar ---------- */
 
 .publicar {
@@ -1352,4 +1422,56 @@ section.pagina-angosta h2 {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+<<<<<<< HEAD
+/* ---------- Mis entregas y mis notificaciones (perfil) ---------- */
+
+.lista-basica {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.lista-basica li {
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  padding: 0.85rem 1rem;
+}
+
+.lista-basica p {
+  margin: 0.2rem 0;
+}
+
+.lista-basica .fecha {
+  color: var(--gris);
+  font-size: 0.875rem;
+}
+
+.lista-basica button {
+  margin-top: 0.5rem;
+}
+
+.toast-ganador {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: var(--ok-fondo);
+  color: var(--ok);
+  border: 1px solid var(--ok);
+  padding: 16px 24px;
+  border-radius: var(--radio);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+  font-family: var(--sans);
+  z-index: 9999;
+  animation: deslizar-toast 0.4s ease-out forwards;
+}
+
+@keyframes deslizar-toast {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }

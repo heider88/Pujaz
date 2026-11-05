@@ -2,27 +2,33 @@
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useMutation } from '@apollo/client/react'
-import { DEPOSIT, WALLET, type TipoMovimiento } from '../api/billetera'
+import { DEPOSIT, type Billetera, type TipoMovimiento } from '../api/billetera'
 import { codigoError } from '../api/errores'
 import { formatearFecha, formatearPrecio } from '../utils/formato'
-import { useRouter } from 'next/navigation'
 
 const NOMBRE_MOVIMIENTO: Record<TipoMovimiento, string> = {
   DEPOSIT: 'Recarga',
   RESERVE: 'Reserva por puja',
   REFUND: 'Reintegro',
+  CHARGE: 'Subasta ganada',
+}
+
+// Reservar y cobrar sacan plata; recargar y reintegrar la devuelven.
+function esSalida(tipo: TipoMovimiento): boolean {
+  return tipo === 'RESERVE' || tipo === 'CHARGE'
 }
 
 function signo(tipo: TipoMovimiento): string {
-  return tipo === 'RESERVE' ? '−' : '+'
+  return esSalida(tipo) ? '−' : '+'
 }
 
-export function BilleteraUsuario({ wallet, token }: { wallet: any, token: string }) {
+export function BilleteraUsuario({ wallet }: { wallet: Billetera }) {
   const [monto, setMonto] = useState('')
   const [promoCode, setPromoCode] = useState('')
   const [errorRecarga, setErrorRecarga] = useState<string | null>(null)
   const [recargado, setRecargado] = useState<number | null>(null)
-  const router = useRouter()
+  // Empieza con lo que trajo el servidor y se reemplaza con la billetera que devuelve cada recarga.
+  const [billetera, setBilletera] = useState(wallet)
 
   const [recargar, { loading: recargando }] = useMutation(DEPOSIT)
 
@@ -36,11 +42,11 @@ export function BilleteraUsuario({ wallet, token }: { wallet: any, token: string
       return
     }
     try {
-      await recargar({ variables: { amount: cantidad, promoCode: promoCode.trim() } })
+      const { data } = await recargar({ variables: { amount: cantidad, promoCode: promoCode.trim() } })
+      if (data) setBilletera(data.deposit)
       setRecargado(cantidad)
       setMonto('')
       setPromoCode('')
-      router.refresh()
     } catch (e) {
       setErrorRecarga(
         codigoError(e) === 'BAD_USER_INPUT'
@@ -50,7 +56,17 @@ export function BilleteraUsuario({ wallet, token }: { wallet: any, token: string
     }
   }
 
-  const { available, reserved, movements } = wallet
+  const { available, reserved, movements } = billetera
+
+  const auctionIdsCobrados = new Set(
+    movements.filter((m) => m.type === 'CHARGE' && m.auction).map((m) => m.auction!.id)
+  )
+  const movimientosVisibles = movements.filter((m) => {
+    if (m.type === 'RESERVE' && m.auction && auctionIdsCobrados.has(m.auction.id)) {
+      return false
+    }
+    return true
+  })
 
   return (
     <section>
@@ -109,7 +125,7 @@ export function BilleteraUsuario({ wallet, token }: { wallet: any, token: string
       </form>
 
       <h2>Movimientos</h2>
-      {movements.length === 0 ? (
+      {movimientosVisibles.length === 0 ? (
         <p>Todavía no tienes movimientos.</p>
       ) : (
         <table className="tabla-movimientos">
@@ -122,11 +138,11 @@ export function BilleteraUsuario({ wallet, token }: { wallet: any, token: string
             </tr>
           </thead>
           <tbody>
-            {movements.map((m: any) => (
+            {movimientosVisibles.map((m) => (
               <tr key={m.id}>
                 <td>{formatearFecha(m.createdAt)}</td>
-                <td>{NOMBRE_MOVIMIENTO[m.type as TipoMovimiento]}</td>
-                <td className={m.type === 'RESERVE' ? 'monto-negativo' : 'monto-positivo'}>
+                <td>{NOMBRE_MOVIMIENTO[m.type]}</td>
+                <td className={esSalida(m.type) ? 'monto-negativo' : 'monto-positivo'}>
                   {signo(m.type)} {formatearPrecio(m.amount)}
                 </td>
                 <td>

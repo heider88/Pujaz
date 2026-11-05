@@ -16,3 +16,12 @@ CREATE TABLE wallet_movements (
 
 ALTER TABLE wallet_movements ADD CONSTRAINT valid_movement_type 
     CHECK (type IN ('recarga', 'reserva por puja', 'reintegro', 'cobro'));
+
+CREATE TABLE reservations (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    auction_id INT NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

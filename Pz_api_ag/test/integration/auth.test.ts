@@ -30,7 +30,7 @@ const REGISTER = `mutation ($input: RegisterInput!) { register(input: $input) { 
 const LOGIN = `mutation ($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email } } }`;
 const ME = `{ me { id name email } }`;
 
-const NEW_USER = { name: 'Luis', email: 'luis@correo.com', password: 'Secreto456' };
+const NEW_USER = { name: 'Luis', email: 'luis@correo.com', password: 'Secreto456', role: 'comprador' };
 
 describe('autenticación', () => {
   afterEach(() => {
@@ -42,7 +42,7 @@ describe('autenticación', () => {
     const { data, errors } = await graphql(REGISTER, { input: NEW_USER });
     expect(errors).toBeUndefined();
     expect(data.register.user).toMatchObject({ name: 'Luis', email: 'luis@correo.com' });
-    await expect(tokenService.verify(data.register.token)).resolves.toEqual({ userId: data.register.user.id });
+    await expect(tokenService.verify(data.register.token)).resolves.toEqual({ userId: data.register.user.id, role: 'comprador' });
   });
 
   it('2. register con correo repetido devuelve EMAIL_TAKEN', async () => {

@@ -9,7 +9,7 @@ const typeDefs = readFileSync(SCHEMA_PATH, 'utf8');
 const yoga = createGateway({
   typeDefs,
   corsOrigin: 'http://localhost:5173',
-  getUserId: async () => null,
+  getUserContext: async () => null,
   // Resolvers solo para las pruebas: provocan los dos tipos de error.
   resolvers: {
     Query: {

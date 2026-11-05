@@ -87,7 +87,7 @@ func (c *AuctionController) PlaceBid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := c.service.PlaceBid(r.Context(), auctionIDStr, req.UserID, req.Amount)
+	resp, err := c.service.PlaceBid(r.Context(), auctionIDStr, req)
 	if err != nil {
 		switch err {
 		case services.ErrNotFound:

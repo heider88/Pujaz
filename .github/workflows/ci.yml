@@ -1,42 +1,128 @@
-name: CI Pruebas y Migraciones
+name: CI Pujaz
 
 on:
   push:
-    branches: [ "developcito", "main" ]
+    branches: [developcito, main, feature/KAN-59-infraestructura-asincrona]
   pull_request:
-    branches: [ "developcito", "main" ]
+    branches: [developcito, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  test-migrations:
+  compose:
     runs-on: ubuntu-latest
-    
-    # se levantas las db's limpias en el servidor de GitHub
+    env:
+      JWT_SECRET: ci-only-secret-not-for-deployment-123456789
+      POSTGRES_PASSWORD: ci-only-password
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar Compose y sus 17 servicios
+        run: |
+          docker compose config --quiet
+          docker compose config --format json | python3 -c '
+          import json, sys
+          c = json.load(sys.stdin)
+          services = c["services"]
+          assert len(services) == 17, "Se esperan 17 componentes"
+          assert set(c["networks"]) == {"public", "backend", "data"}
+          assert c["networks"]["backend"]["internal"] and c["networks"]["data"]["internal"]
+          for name, service in services.items():
+              nets = set(service["networks"])
+              assert "public" not in nets or name == "pz-web-proxy", name
+              if name.endswith("-db"):
+                  assert nets == {"data"}, name
+              if name != "pz-cierre-cl":
+                  assert service.get("healthcheck"), name
+              for dep, rule in service.get("depends_on", {}).items():
+                  assert dep in services, dep
+                  assert nets.intersection(services[dep]["networks"]), (name, dep)
+                  if rule["condition"] == "service_healthy":
+                      assert services[dep].get("healthcheck"), dep
+          print("17 componentes y dependencias validados")'
+
+  go-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [Pz_subastas_cl, Pz_billetera_cl, Pz_cierre_cl]
     services:
       postgres:
-        postgres:
         image: postgres:15
         env:
           POSTGRES_USER: pujaz_user
           POSTGRES_PASSWORD: pujaz_password
           POSTGRES_DB: pujaz_transaccional
-        ports:
-          - 5432:5432
-      
+        ports: ['5432:5432', '55432:5432']
+        options: >-
+          --health-cmd "pg_isready -U pujaz_user -d pujaz_transaccional"
+          --health-interval 5s --health-timeout 5s --health-retries 10
       mongo:
         image: mongo:6
-        ports:
-          - 27017:27017
-
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-    - name: Checkout del código
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.service }}/go.mod
+          cache: false
+      - name: Pruebas Go (bases efímeras de CI)
+        working-directory: ${{ matrix.service }}
+        run: go test -p 1 -v ./...
+      - name: Compilar
+        working-directory: ${{ matrix.service }}
+        run: go build ./...
 
-    - name: Instalar Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21' # la versión que se use en el proyecto
+  python-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: Pz_catalogo_cl
+            requirements: requirements.txt
+          - service: Pz_postpuja_cl
+            requirements: requirements.txt
+          - service: Pz_notificaciones_cl
+            requirements: requirements-dev.txt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias
+        working-directory: ${{ matrix.service }}
+        run: python -m pip install -r ${{ matrix.requirements }}
+      - name: Pruebas Python
+        working-directory: ${{ matrix.service }}
+        run: python -m pytest -q
 
-    - name: Ejecutar Pruebas de Migraciones
-      run: |
-        cd Pz_transaccional_cl
-        go test -v ./...
+  images:
+    needs: compose
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - pz-web-fe
+          - pz-api-ag
+          - pz-catalogo-cl
+          - pz-postpuja-cl
+          - pz-subastas-cl
+          - pz-usuarios-cl
+          - pz-billetera-cl
+          - pz-cierre-cl
+          - pz-notificaciones-cl
+    env:
+      JWT_SECRET: ci-only-secret-not-for-deployment-123456789
+      POSTGRES_PASSWORD: ci-only-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Construir imagen sin publicar ni arrancar servicios
+        run: docker compose build ${{ matrix.service }}

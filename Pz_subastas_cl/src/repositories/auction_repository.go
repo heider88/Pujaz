@@ -46,28 +46,29 @@ func (r *AuctionRepository) getAuction(ctx context.Context, txOrDB interface {
 
 	// Get winning bid
 	bidQuery := `
-		SELECT b.id, b.amount, b.created_at, u.id, u.name 
+		SELECT b.id, b.amount, b.created_at, b.reservation_id, b.user_id, b.user_name 
 		FROM bids b
-		JOIN users u ON b.user_id = u.id
 		WHERE b.auction_id = $1
 		ORDER BY b.amount DESC, b.created_at ASC
 		LIMIT 1
 	`
 	var bID, uID int
+	var resID string
 	var bid models.Bid
-	err = txOrDB.QueryRowContext(ctx, bidQuery, auctionID).Scan(&bID, &bid.Amount, &bid.CreatedAt, &uID, &bid.Bidder.Name)
+	err = txOrDB.QueryRowContext(ctx, bidQuery, auctionID).Scan(&bID, &bid.Amount, &bid.CreatedAt, &resID, &uID, &bid.Bidder.Name)
 	if err == nil {
 		bid.ID = strconv.Itoa(bID)
 		bid.Bidder.ID = strconv.Itoa(uID)
+		bid.ReservationID = resID
 		auction.WinningBid = &bid
 	}
 
 	// Get participants
 	partQuery := `
-		SELECT DISTINCT u.id, u.name 
+		SELECT b.user_id, MAX(b.user_name) 
 		FROM bids b
-		JOIN users u ON b.user_id = u.id
 		WHERE b.auction_id = $1
+		GROUP BY b.user_id
 	`
 	rows, err := txOrDB.QueryContext(ctx, partQuery, auctionID)
 	if err == nil {
@@ -133,9 +134,9 @@ func (r *AuctionRepository) UpdateAuctionPrice(ctx context.Context, tx *sql.Tx, 
 	return err
 }
 
-func (r *AuctionRepository) CreateBid(ctx context.Context, tx *sql.Tx, auctionID int, userID int, amount float64) (*models.Bid, error) {
+func (r *AuctionRepository) CreateBid(ctx context.Context, tx *sql.Tx, auctionID int, userID int, userName string, amount float64, reservationID string) (*models.Bid, error) {
 	var bidID int
-	err := tx.QueryRowContext(ctx, "INSERT INTO bids (auction_id, user_id, amount) VALUES ($1, $2, $3) RETURNING id", auctionID, userID, amount).Scan(&bidID)
+	err := tx.QueryRowContext(ctx, "INSERT INTO bids (auction_id, user_id, user_name, amount, reservation_id) VALUES ($1, $2, $3, $4, $5) RETURNING id", auctionID, userID, userName, amount, reservationID).Scan(&bidID)
 	if err != nil {
 		return nil, err
 	}
@@ -143,8 +144,8 @@ func (r *AuctionRepository) CreateBid(ctx context.Context, tx *sql.Tx, auctionID
 	var bid models.Bid
 	var uID int
 	err = tx.QueryRowContext(ctx, `
-		SELECT b.id, b.amount, b.created_at, u.id, u.name 
-		FROM bids b JOIN users u ON b.user_id = u.id WHERE b.id = $1
+		SELECT b.id, b.amount, b.created_at, b.user_id, b.user_name 
+		FROM bids b WHERE b.id = $1
 	`, bidID).Scan(&bidID, &bid.Amount, &bid.CreatedAt, &uID, &bid.Bidder.Name)
 	if err != nil {
 		return nil, err
@@ -215,12 +216,15 @@ type ExpiredAuction struct {
 	ItemID       string
 	CurrentPrice float64
 	WinnerID     *int
+	ReservationID *string
+	Participants []string
 }
 
 func (r *AuctionRepository) GetExpiredOpenAuctions(ctx context.Context) ([]ExpiredAuction, error) {
 	query := `
 		SELECT a.id, a.item_id, a.current_price, 
-		       (SELECT user_id FROM bids b WHERE b.auction_id = a.id ORDER BY amount DESC LIMIT 1) as winner_id
+		       (SELECT user_id FROM bids b WHERE b.auction_id = a.id ORDER BY amount DESC, created_at ASC LIMIT 1) as winner_id,
+		       (SELECT reservation_id FROM bids b WHERE b.auction_id = a.id ORDER BY amount DESC, created_at ASC LIMIT 1) as res_id
 		FROM auctions a
 		WHERE a.status = 'abierta' AND a.ends_at < NOW()
 	`
@@ -234,11 +238,28 @@ func (r *AuctionRepository) GetExpiredOpenAuctions(ctx context.Context) ([]Expir
 	for rows.Next() {
 		var ea ExpiredAuction
 		var winnerID sql.NullInt64
-		if err := rows.Scan(&ea.IDInt, &ea.ItemID, &ea.CurrentPrice, &winnerID); err == nil {
+		var resID sql.NullString
+		if err := rows.Scan(&ea.IDInt, &ea.ItemID, &ea.CurrentPrice, &winnerID, &resID); err == nil {
 			if winnerID.Valid {
 				wid := int(winnerID.Int64)
 				ea.WinnerID = &wid
 			}
+			if resID.Valid {
+				ea.ReservationID = &resID.String
+			}
+			
+			// get participants
+			pRows, pErr := r.db.QueryContext(ctx, "SELECT DISTINCT user_id FROM bids WHERE auction_id = $1", ea.IDInt)
+			if pErr == nil {
+				for pRows.Next() {
+					var p int
+					if err := pRows.Scan(&p); err == nil {
+						ea.Participants = append(ea.Participants, strconv.Itoa(p))
+					}
+				}
+				pRows.Close()
+			}
+			
 			result = append(result, ea)
 		}
 	}

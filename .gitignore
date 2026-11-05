@@ -18,3 +18,5 @@ playwright-report/
 
 # Notas personales de estudio (no van al repo).
 ESTUDIO_DOCKER.md
+target/
+**/target/

@@ -2,7 +2,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { LOGIN } from '../api/usuarios'
-import { navegacion } from '../test/navegacion'
+import { cookieSesion, navegacion } from '../test/navegacion'
 import { ana, renderConSesion } from '../test/render'
 import { FormularioLogin } from './FormularioLogin'
 
@@ -23,7 +23,7 @@ describe('FormularioLogin', () => {
     llenarYEnviar('ana@correo.com', 'Secreto123')
 
     await waitFor(() => expect(navegacion.replace).toHaveBeenCalledWith('/billetera'))
-    expect(localStorage.getItem('pujaz_token')).toBe('jwt-nuevo')
+    expect(cookieSesion.poner).toHaveBeenCalledWith('jwt-nuevo')
   })
 
   it('sin ?desde= (o con una dirección de otro sitio) vuelve a las subastas', async () => {
@@ -47,6 +47,6 @@ describe('FormularioLogin', () => {
     llenarYEnviar('ana@correo.com', 'Malamala1')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Correo o contraseña incorrectos.')
-    expect(localStorage.getItem('pujaz_token')).toBeNull()
+    expect(cookieSesion.poner).not.toHaveBeenCalled()
   })
 })

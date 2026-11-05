@@ -55,6 +55,20 @@ type WalletResponse struct {
 	Movements []WalletMovement `json:"movements"`
 }
 
+type Reservation struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"userId"`
+	AuctionID string    `json:"auctionId"`
+	Amount    float64   `json:"amount"`
+	Status    string    `json:"status"` // "ACTIVE", "RELEASED", "CHARGED"
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type ReservationResult struct {
+	Reservation Reservation    `json:"reservation"`
+	Wallet      WalletResponse `json:"wallet"`
+}
+
 type DepositRequest struct {
 	Amount    float64 `json:"amount"`
 	PromoCode string  `json:"promoCode,omitempty"`
@@ -91,3 +105,4 @@ type CreateAuctionRequest struct {
 	BasePrice float64   `json:"basePrice"`
 	EndsAt    time.Time `json:"endsAt"`
 }
+

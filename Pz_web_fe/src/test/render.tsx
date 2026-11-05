@@ -13,6 +13,7 @@ export const ana: Usuario = {
   id: '7',
   name: 'Ana Gómez',
   email: 'ana@correo.com',
+  role: 'comprador',
   createdAt: '2026-10-01T12:00:00Z',
 } as unknown as Usuario
 
@@ -26,7 +27,7 @@ interface Opciones {
   // Lo que va después de "?" en la URL, por ejemplo "desde=/perfil".
   busqueda?: string
   mocks?: MockLink.MockedResponse[]
-  // Si se pasa, se guarda un token y se agrega el mock de `me` con este usuario.
+  // Si se pasa, la sesión arranca con este usuario (como si el servidor lo hubiera leído de la cookie).
   conSesion?: Usuario
 }
 
@@ -34,13 +35,9 @@ export function renderConSesion(
   ui: ReactNode,
   { ruta = '/', busqueda = '', mocks = [], conSesion }: Opciones = {},
 ) {
-  localStorage.clear()
   irA(ruta, busqueda)
   const todos = [...mocks]
-  if (conSesion) {
-    localStorage.setItem('pujaz_token', 'token-de-prueba')
-    todos.unshift(mockMe(conSesion))
-  }
+  if (conSesion) todos.unshift(mockMe(conSesion))
   return render(
     <MockedProvider mocks={todos}>
       <SessionProvider usuarioInicial={conSesion ?? null}>{ui}</SessionProvider>

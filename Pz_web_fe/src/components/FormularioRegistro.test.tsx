@@ -2,7 +2,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { REGISTER } from '../api/usuarios'
-import { navegacion } from '../test/navegacion'
+import { cookieSesion, navegacion } from '../test/navegacion'
 import { ana, renderConSesion } from '../test/render'
 import { FormularioRegistro } from './FormularioRegistro'
 
@@ -17,7 +17,7 @@ function llenarYEnviar(password = 'Secreto123') {
 
 const pedido = {
   query: REGISTER,
-  variables: { input: { name: 'Ana Gómez', email: 'ana@correo.com', password: 'Secreto123' } },
+  variables: { input: { name: 'Ana Gómez', email: 'ana@correo.com', password: 'Secreto123', role: 'comprador' } },
 }
 
 describe('FormularioRegistro', () => {
@@ -28,7 +28,19 @@ describe('FormularioRegistro', () => {
     })
     llenarYEnviar()
     await waitFor(() => expect(navegacion.replace).toHaveBeenCalledWith('/'))
-    expect(localStorage.getItem('pujaz_token')).toBe('jwt-ana')
+    expect(cookieSesion.poner).toHaveBeenCalledWith('jwt-ana')
+  })
+
+  it('envía el rol de vendedor si se elige «Vender»', async () => {
+    const comoVendedor = { ...pedido, variables: { input: { ...pedido.variables.input, role: 'vendedor' } } }
+    renderConSesion(<FormularioRegistro />, {
+      ruta: '/registro',
+      mocks: [{ request: comoVendedor, result: { data: { register: { __typename: 'AuthPayload', token: 'jwt-v', user: ana } } } }],
+    })
+    expect(screen.getByRole('radio', { name: /Comprar/ })).toBeChecked()
+    fireEvent.click(screen.getByRole('radio', { name: /Vender/ }))
+    llenarYEnviar()
+    await waitFor(() => expect(cookieSesion.poner).toHaveBeenCalledWith('jwt-v'))
   })
 
   it('avisa si el correo ya está registrado', async () => {

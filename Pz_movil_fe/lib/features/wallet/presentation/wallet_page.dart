@@ -73,7 +73,8 @@ class _WalletPageState extends State<WalletPage> {
                 if (movements.isEmpty) const Padding(padding: EdgeInsets.only(top: 16), child: Text('Todavía no tienes movimientos.')),
                 ...movements.map((raw) {
                   final movement = raw as Map<String, dynamic>;
-                  final positive = movement['type'] != 'RESERVE';
+                  // Reservar y cobrar sacan plata; recargar y reintegrar la devuelven.
+                  final positive = movement['type'] != 'RESERVE' && movement['type'] != 'CHARGE';
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(positive ? Icons.add_circle_outline : Icons.remove_circle_outline),
