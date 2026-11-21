@@ -1,5 +1,5 @@
 services:
-  pz-web-proxy:
+  pz-web-rp:
     image: nginx:stable-alpine
     ports:
     - ${NGINX_PORT:-8080}:80
@@ -27,6 +27,35 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  pz-movil-rp:
+    image: nginx:stable-alpine
+    ports:
+    - ${NGINX_MOVIL_PORT:-8081}:80
+    environment:
+      GATEWAY_PORT: ${PORT:-4000}
+      NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$$
+    volumes:
+    - ./docker/nginx/movil.conf.template:/etc/nginx/templates/default.conf.template:ro
+    networks:
+    - public
+    - edge
+    depends_on:
+      pz-web-fe:
+        condition: service_healthy
+      pz-api-ag:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - -q
+      - -O
+      - /dev/null
+      - http://127.0.0.1/healthz
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   pz-web-fe:
     build:
       context: ./Pz_web_fe

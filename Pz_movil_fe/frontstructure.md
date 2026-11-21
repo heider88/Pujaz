@@ -21,8 +21,8 @@ La dependencia de GraphQL debe configurar dos transportes:
 
 | Operación | Desarrollo | Producción |
 |---|---|---|
-| Query/mutation | `http://10.0.2.2:8080/graphql` (Android emulator) | `https://api.pujaz.example/graphql` |
-| Subscription | `ws://10.0.2.2:8080/graphql` | `wss://api.pujaz.example/graphql` |
+| Query/mutation | `http://10.0.2.2:8081/graphql` (Android emulator) | `https://api.pujaz.example/graphql` |
+| Subscription | `ws://10.0.2.2:8081/graphql` | `wss://api.pujaz.example/graphql` |
 
 En un dispositivo físico, `10.0.2.2` se reemplaza por la IP de la máquina que
 ejecuta Docker. Las URLs no deben quedar codificadas en los widgets.

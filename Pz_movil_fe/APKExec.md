@@ -60,16 +60,16 @@ flutter devices
 ```bash
 hostname -I
 flutter run \
-  --dart-define=PUJAZ_GRAPHQL_HTTP=http://IP_DEL_PC:8080/graphql \
-  --dart-define=PUJAZ_GRAPHQL_WS=ws://IP_DEL_PC:8080/graphql
+  --dart-define=PUJAZ_GRAPHQL_HTTP=http://IP_DEL_PC:8081/graphql \
+  --dart-define=PUJAZ_GRAPHQL_WS=ws://IP_DEL_PC:8081/graphql
 ```
 
 ## 5. Generar e instalar APK
 
 ```bash
 flutter build apk --debug \
-  --dart-define=PUJAZ_GRAPHQL_HTTP=http://IP_DEL_PC:8080/graphql \
-  --dart-define=PUJAZ_GRAPHQL_WS=ws://IP_DEL_PC:8080/graphql
+  --dart-define=PUJAZ_GRAPHQL_HTTP=http://IP_DEL_PC:8081/graphql \
+  --dart-define=PUJAZ_GRAPHQL_WS=ws://IP_DEL_PC:8081/graphql
 
 flutter install
 ```

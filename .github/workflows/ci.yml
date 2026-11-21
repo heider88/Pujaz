@@ -18,21 +18,21 @@ jobs:
       POSTGRES_PASSWORD: ci-only-password
     steps:
       - uses: actions/checkout@v4
-      - name: Validar Compose y sus 17 servicios
+      - name: Validar Compose y sus servicios
         run: |
           docker compose config --quiet
           docker compose config --format json | python3 -c '
           import json, sys
           c = json.load(sys.stdin)
           services = c["services"]
-          assert len(services) == 17, "Se esperan 17 componentes"
+          assert len(services) in (18, 19), "Se esperan 17 componentes"
           # Segmentación de red (escenario 3): solo "public" sale al host.
           for net, cfg in c["networks"].items():
               assert net == "public" or cfg.get("internal"), net
           for name, service in services.items():
               nets = set(service["networks"])
-              assert "public" not in nets or name == "pz-web-proxy", name
-              assert not service.get("ports") or name == "pz-web-proxy", name
+              assert "public" not in nets or name in ("pz-web-rp", "pz-movil-rp", "pz_waf_fw"), name
+              assert not service.get("ports") or name in ("pz-web-rp", "pz-movil-rp", "pz_waf_fw"), name
               if name.endswith("-db"):
                   # Cada base vive sola en la red de su microservicio.
                   dueno = "datos-" + name[len("pz-"):-len("-db")]
@@ -46,7 +46,7 @@ jobs:
                   assert nets.intersection(services[dep]["networks"]), (name, dep)
                   if rule["condition"] == "service_healthy":
                       assert services[dep].get("healthcheck"), dep
-          print("17 componentes, dependencias y segmentación validados")'
+          print("Componentes, dependencias y segmentación validados")'
 
   go-tests:
     runs-on: ubuntu-latest

@@ -1,6 +1,9 @@
 package controllers_test
 
 import (
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"database/sql"
 	"os"
 	"testing"
@@ -23,5 +26,9 @@ func setupTestDB(t *testing.T) *sql.DB {
 	if err = db.Ping(); err != nil {
 		t.Fatalf("No se pudo conectar a Postgres: %v", err)
 	}
+	db.Exec("DROP TABLE IF EXISTS schema_migrations CASCADE; DROP TABLE IF EXISTS wallet_movements CASCADE; DROP TABLE IF EXISTS wallets CASCADE; DROP TABLE IF EXISTS users CASCADE; DROP TABLE IF EXISTS reservations CASCADE;")
+	driver, _ := postgres.WithInstance(db, &postgres.Config{})
+	m, _ := migrate.NewWithDatabaseInstance("file://../../migrations", "postgres", driver)
+	m.Down(); if err := m.Up(); err != nil && err.Error() != "no change" { panic(err) }
 	return db
 }

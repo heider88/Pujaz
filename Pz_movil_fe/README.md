@@ -16,8 +16,8 @@ Desde esta carpeta:
 ```bash
 flutter pub get
 flutter run \
-  --dart-define=PUJAZ_GRAPHQL_HTTP=http://10.0.2.2:8080/graphql \
-  --dart-define=PUJAZ_GRAPHQL_WS=ws://10.0.2.2:8080/graphql
+  --dart-define=PUJAZ_GRAPHQL_HTTP=http://10.0.2.2:8081/graphql \
+  --dart-define=PUJAZ_GRAPHQL_WS=ws://10.0.2.2:8081/graphql
 ```
 
 `10.0.2.2` apunta al host desde el emulador Android. En un teléfono físico
