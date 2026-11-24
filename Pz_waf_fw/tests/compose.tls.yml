@@ -1,0 +1,61 @@
+# Entorno aislado: WAF y proxies reales; upstream HTTP/WS controlado.
+services:
+  test:
+    image: python:3.12-alpine
+    profiles: [test]
+    network_mode: service:waf
+    environment:
+      TLS_TEST_PORTS: '8080,8081'
+    command: python /test/tests/test_tls.py
+    volumes:
+      - ./test_tls.py:/test/tests/test_tls.py:ro
+      - ../certs/ca.crt:/test/certs/ca.crt:ro
+    depends_on:
+      - waf
+  waf:
+    build: ..
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8090/healthz']
+      interval: 1s
+      timeout: 3s
+      retries: 20
+    ports:
+      - 127.0.0.1:18080:8080
+      - 127.0.0.1:18081:8081
+    volumes:
+      - ../certs/server.crt:/etc/nginx/tls/server.crt:ro
+      - ../certs/server.key:/etc/nginx/tls/server.key:ro
+    depends_on:
+      - pz-web-rp
+      - pz-movil-rp
+  pz-web-rp:
+    image: nginx:stable-alpine
+    environment:
+      GATEWAY_PORT: '4000'
+      NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$$
+    volumes:
+      - ../../docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      - upstream
+  pz-movil-rp:
+    image: nginx:stable-alpine
+    environment:
+      GATEWAY_PORT: '4000'
+      NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$$
+    volumes:
+      - ../../docker/nginx/movil.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      - upstream
+  upstream:
+    image: python:3.12-alpine
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/healthz')"]
+      interval: 1s
+      timeout: 3s
+      retries: 20
+    command: python /test/upstream.py
+    volumes:
+      - ./upstream.py:/test/upstream.py:ro
+    networks:
+      default:
+        aliases: [pz-api-ag, pz-web-fe]

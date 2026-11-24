@@ -139,7 +139,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validar la configuración del firewall (nginx -t)
+      - name: Crear certificados efimeros de prueba
+        run: python3 Pz_waf_fw/generate_certificates.py
+      - name: Construir y arrancar el canal aislado
+        run: docker compose -p pujaz-tls-test -f Pz_waf_fw/tests/compose.tls.yml up -d --build --wait
+      - name: Validar Nginx y HTTPS-WSS con certificado verificado
         run: |
-          docker build -t pz-waf-fw Pz_waf_fw
-          docker run --rm pz-waf-fw nginx -t
+          docker compose -p pujaz-tls-test -f Pz_waf_fw/tests/compose.tls.yml exec -T waf nginx -t
+          docker compose -p pujaz-tls-test -f Pz_waf_fw/tests/compose.tls.yml run --rm test
+      - name: Detener entorno de prueba
+        if: always()
+        run: docker compose -p pujaz-tls-test -f Pz_waf_fw/tests/compose.tls.yml down
