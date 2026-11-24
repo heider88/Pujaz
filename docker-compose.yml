@@ -1,15 +1,39 @@
 services:
+  # Firewall de aplicación: único punto publicado. Bloquea IP de la lista negra,
+  # limita la frecuencia por IP y filtra peticiones maliciosas antes de los proxies.
+  pz-waf-fw:
+    build:
+      context: ./Pz_waf_fw
+    ports:
+    - ${NGINX_PORT:-8080}:8080
+    - ${NGINX_MOVIL_PORT:-8081}:8081
+    volumes:
+    - ./Pz_waf_fw/listas:/etc/nginx/listas:ro
+    networks:
+    - public
+    - perimetro
+    depends_on:
+      pz-web-rp:
+        condition: service_healthy
+      pz-movil-rp:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8080/healthz && wget -q -O /dev/null http://127.0.0.1:8081/healthz
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
   pz-web-rp:
     image: nginx:stable-alpine
-    ports:
-    - ${NGINX_PORT:-8080}:80
     environment:
       GATEWAY_PORT: ${PORT:-4000}
       NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$$
     volumes:
     - ./docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
     networks:
-    - public
+    - perimetro
     - edge
     depends_on:
       pz-web-fe:
@@ -29,15 +53,13 @@ services:
       retries: 5
   pz-movil-rp:
     image: nginx:stable-alpine
-    ports:
-    - ${NGINX_MOVIL_PORT:-8081}:80
     environment:
       GATEWAY_PORT: ${PORT:-4000}
       NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$$
     volumes:
     - ./docker/nginx/movil.conf.template:/etc/nginx/templates/default.conf.template:ro
     networks:
-    - public
+    - perimetro
     - edge
     depends_on:
       pz-web-fe:
@@ -416,9 +438,13 @@ services:
       start_period: 20s
     restart: unless-stopped
 networks:
-  # Zona pública: lo único que el host ve. Solo el proxy inverso.
+  # Zona pública: lo único que el host ve. Solo el firewall.
   public:
     driver: bridge
+  # Perímetro: el firewall y los dos proxies inversos. Nadie llega a los proxies sin pasar por el firewall.
+  perimetro:
+    driver: bridge
+    internal: true
   # Borde: proxy, front web (SSR) y gateway. El front no ve los microservicios.
   edge:
     driver: bridge

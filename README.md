@@ -14,7 +14,8 @@ La versión entregada en la primera entrega es la etiqueta **`v1.0-entrega1`**, 
 
 | Componente | Carpeta | Tecnología | Responsabilidad |
 | --- | --- | --- | --- |
-| `Pz_web_fe` | `Pz_web_fe/` | TypeScript, Next.js | Pantallas de la aplicación con SSR: el servidor arma el listado y el detalle; el panel en vivo, la puja y los formularios corren en el navegador. Un Nginx (`pz-web-proxy`) es el único puerto publicado y reenvía `/graphql` al gateway. |
+| `Pz_waf_fw` | `Pz_waf_fw/` | Nginx | Firewall de aplicación y único componente publicado (`8080` web, `8081` móvil): bloquea IP baneadas, limita la frecuencia por IP y filtra peticiones maliciosas antes de los proxies inversos. Ver su [README](Pz_waf_fw/README.md). |
+| `Pz_web_fe` | `Pz_web_fe/` | TypeScript, Next.js | Pantallas de la aplicación con SSR: el servidor arma el listado y el detalle; el panel en vivo, la puja y los formularios corren en el navegador. Un Nginx (`pz-web-rp`), detrás del firewall, reenvía `/graphql` al gateway. |
 | `Pz_api_ag` | `Pz_api_ag/` | TypeScript, Node.js, GraphQL | Único punto de entrada: valida el JWT, llama a los componentes de lógica y publica las actualizaciones de las subastas por WebSocket. |
 | `Pz_transaccional_cl` | `Pz_transaccional_cl/` | Go | Usuarios, billetera, subastas y pujas, con transacciones. |
 | `Pz_catalogo_cl` | `Pz_catalogo_cl/` | Python, FastAPI | Fichas de las piezas y búsqueda. |

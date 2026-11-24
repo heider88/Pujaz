@@ -31,8 +31,9 @@ jobs:
               assert net == "public" or cfg.get("internal"), net
           for name, service in services.items():
               nets = set(service["networks"])
-              assert "public" not in nets or name in ("pz-web-rp", "pz-movil-rp", "pz_waf_fw"), name
-              assert not service.get("ports") or name in ("pz-web-rp", "pz-movil-rp", "pz_waf_fw"), name
+              # Solo el firewall está en la red pública y publica puertos.
+              assert "public" not in nets or name == "pz-waf-fw", name
+              assert not service.get("ports") or name == "pz-waf-fw", name
               if name.endswith("-db"):
                   # Cada base vive sola en la red de su microservicio.
                   dueno = "datos-" + name[len("pz-"):-len("-db")]
@@ -124,6 +125,7 @@ jobs:
           - pz-billetera-cl
           - pz-cierre-cl
           - pz-notificaciones-cl
+          - pz-waf-fw
     env:
       JWT_SECRET: ci-only-secret-not-for-deployment-123456789
       POSTGRES_PASSWORD: ci-only-password
@@ -132,3 +134,12 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Construir imagen sin publicar ni arrancar servicios
         run: docker compose build ${{ matrix.service }}
+
+  waf-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar la configuración del firewall (nginx -t)
+        run: |
+          docker build -t pz-waf-fw Pz_waf_fw
+          docker run --rm pz-waf-fw nginx -t
