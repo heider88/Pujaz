@@ -10,7 +10,7 @@ La versión entregada en la primera entrega es la etiqueta **`v1.0-entrega1`**, 
 
 ## Arquitectura
 
-![Vista C&C de Pujaz](docs/vistas/cc/vista-cc-broker.png)
+![Vista C&C de Pujaz](docs/vistas/cc/vista-cc-ball-socket.png)
 
 | Componente | Carpeta | Tecnología | Responsabilidad |
 | --- | --- | --- | --- |
