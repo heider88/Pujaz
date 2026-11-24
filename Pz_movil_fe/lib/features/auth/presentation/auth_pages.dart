@@ -27,11 +27,17 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submit() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     final session = SessionScope.of(context);
     final ok = await session.login(_email.text, _password.text);
     if (!mounted) return;
-    setState(() { _loading = false; _error = ok ? null : graphQlErrorMessage(session.error ?? ''); });
+    setState(() {
+      _loading = false;
+      _error = ok ? null : graphQlErrorMessage(session.error ?? '');
+    });
     if (ok) context.go(widget.from ?? '/');
   }
 
@@ -39,13 +45,30 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) => _AuthLayout(
         title: 'Iniciar sesión',
         child: Column(children: [
-          TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Correo')),
+          TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Correo')),
           const SizedBox(height: 12),
-          TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Contraseña')),
+          TextField(
+              controller: _password,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Contraseña')),
           const SizedBox(height: 20),
-          SizedBox(width: double.infinity, child: FilledButton(onPressed: _loading ? null : _submit, child: Text(_loading ? 'Entrando…' : 'Iniciar sesión'))),
-          if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-          TextButton(onPressed: () => context.go('/registro'), child: const Text('¿No tienes cuenta? Crea una')),
+          SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                  onPressed: _loading ? null : _submit,
+                  child: Text(_loading ? 'Entrando…' : 'Iniciar sesión'))),
+          if (_error != null)
+            Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(_error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error))),
+          TextButton(
+              onPressed: () => context.go('/registro'),
+              child: const Text('¿No tienes cuenta? Crea una')),
         ]),
       );
 }
@@ -60,7 +83,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
-  // El contrato v3 pide el rol al registrarse: solo quien vende puede publicar piezas.
   String _role = 'comprador';
   bool _loading = false;
   String? _error;
@@ -74,11 +96,34 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _submit() async {
-    setState(() { _loading = true; _error = null; });
+    final name = _name.text.trim();
+    final email = _email.text.trim();
+    final password = _password.text;
+    if (name.isEmpty) {
+      setState(() => _error = 'Ingresa tu nombre.');
+      return;
+    }
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      setState(() => _error = 'Ingresa un correo válido.');
+      return;
+    }
+    // Misma regla que Pz_usuarios_cl.
+    if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$').hasMatch(password)) {
+      setState(() => _error =
+          'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     final session = SessionScope.of(context);
-    final ok = await session.register(_name.text, _email.text, _password.text, _role);
+    final ok = await session.register(name, email, password, _role);
     if (!mounted) return;
-    setState(() { _loading = false; _error = ok ? null : graphQlErrorMessage(session.error ?? ''); });
+    setState(() {
+      _loading = false;
+      _error = ok ? null : graphQlErrorMessage(session.error ?? '');
+    });
     if (ok) context.go('/');
   }
 
@@ -86,13 +131,25 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) => _AuthLayout(
         title: 'Crear cuenta',
         child: Column(children: [
-          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nombre')),
+          TextField(
+              controller: _name,
+              decoration: const InputDecoration(labelText: 'Nombre')),
           const SizedBox(height: 12),
-          TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Correo')),
+          TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Correo')),
           const SizedBox(height: 12),
-          TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Contraseña (mínimo 8 caracteres)')),
+          TextField(
+              controller: _password,
+              obscureText: true,
+              decoration: const InputDecoration(
+                  labelText: 'Contraseña (mínimo 8 caracteres)')),
           const SizedBox(height: 20),
-          Align(alignment: Alignment.centerLeft, child: Text('¿Para qué vas a usar Pujaz?', style: Theme.of(context).textTheme.labelLarge)),
+          Align(
+              alignment: Alignment.centerLeft,
+              child: Text('¿Para qué vas a usar Pujaz?',
+                  style: Theme.of(context).textTheme.labelLarge)),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
@@ -102,13 +159,25 @@ class _RegisterPageState extends State<RegisterPage> {
                 ButtonSegment(value: 'vendedor', label: Text('Vender')),
               ],
               selected: {_role},
-              onSelectionChanged: (seleccion) => setState(() => _role = seleccion.first),
+              onSelectionChanged: (seleccion) =>
+                  setState(() => _role = seleccion.first),
             ),
           ),
           const SizedBox(height: 20),
-          SizedBox(width: double.infinity, child: FilledButton(onPressed: _loading ? null : _submit, child: Text(_loading ? 'Creando…' : 'Registrarme'))),
-          if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-          TextButton(onPressed: () => context.go('/login'), child: const Text('Ya tengo una cuenta')),
+          SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                  onPressed: _loading ? null : _submit,
+                  child: Text(_loading ? 'Creando…' : 'Registrarme'))),
+          if (_error != null)
+            Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(_error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error))),
+          TextButton(
+              onPressed: () => context.go('/login'),
+              child: const Text('Ya tengo una cuenta')),
         ]),
       );
 }

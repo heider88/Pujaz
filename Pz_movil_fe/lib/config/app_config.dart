@@ -1,3 +1,5 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 class AppConfig {
   const AppConfig({
     required this.httpUrl,
@@ -16,6 +18,45 @@ class AppConfig {
     return const AppConfig(httpUrl: httpUrl, wsUrl: wsUrl);
   }
 
+  static const debugHostKey = 'pujaz_debug_host';
+
+  /// Configuración con la que arrancó la app (incluye el host elegido en la
+  /// pantalla de depuración). La usan, por ejemplo, las fotos con ruta relativa.
+  static AppConfig? active;
+
   final String httpUrl;
   final String wsUrl;
+
+  String get host => Uri.parse(httpUrl).host;
+
+  AppConfig withHost(String host) => AppConfig(
+        httpUrl: Uri.parse(httpUrl).replace(host: host).toString(),
+        wsUrl: Uri.parse(wsUrl).replace(host: host).toString(),
+      );
+
+  static bool isValidHost(String host) {
+    if (host.isEmpty || host.length > 253 || host.contains(RegExp(r'\s')) || host.contains(':')) {
+      return false;
+    }
+    if (!RegExp(r'^[A-Za-z0-9.-]+$').hasMatch(host) || host.startsWith('.') || host.endsWith('.')) {
+      return false;
+    }
+    final octets = host.split('.');
+    if (octets.length == 4 && octets.every((octet) => int.tryParse(octet) != null)) {
+      return octets.every((octet) {
+        final value = int.parse(octet);
+        return value >= 0 && value <= 255;
+      });
+    }
+    return true;
+  }
+
+  static Future<String?> readDebugHost(FlutterSecureStorage storage) =>
+      storage.read(key: debugHostKey);
+
+  static Future<void> saveDebugHost(
+    FlutterSecureStorage storage,
+    String host,
+  ) =>
+      storage.write(key: debugHostKey, value: host);
 }
