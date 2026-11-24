@@ -1,5 +1,10 @@
 # Pz_waf_fw · Firewall de aplicación
 
+Las entradas web 8080 y móvil 8081 requieren **HTTPS/WSS**. Antes de iniciar,
+genera o proporciona los certificados siguiendo [Canal seguro](../docs/canal-seguro.md).
+La terminación TLS ocurre en este WAF; los proxies internos conservan HTTP/WS.
+La comprobación interna de salud usa `127.0.0.1:8090`, sin publicar ese puerto.
+
 Nginx delante de los dos proxies inversos. Es el único componente publicado hacia el host: todo el tráfico de la web y de la app móvil pasa por aquí antes de llegar a `pz-web-rp` y `pz-movil-rp`.
 
 ```
@@ -53,25 +58,25 @@ docker compose run --rm --no-deps pz-waf-fw nginx -t
 
 ```bash
 # Tráfico normal: 200
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/
-curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/graphql?query=%7B__typename%7D"
+curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code}\n" https://localhost:8080/
+curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code}\n" "https://localhost:8080/graphql?query=%7B__typename%7D"
 
 # Rutas de escáneres y archivos ocultos: 404
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/.env
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/wp-admin/
+curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code}\n" https://localhost:8080/.env
+curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code}\n" https://localhost:8080/wp-admin/
 
 # Agente de un escáner y firma de ataque en la URL: 403
-curl -s -o /dev/null -w "%{http_code}\n" -A sqlmap http://localhost:8080/
-curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/?id=1%20UNION%20SELECT%20password"
+curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code}\n" -A sqlmap https://localhost:8080/
+curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code}\n" "https://localhost:8080/?id=1%20UNION%20SELECT%20password"
 
 # Método no permitido: 405
-curl -s -o /dev/null -w "%{http_code}\n" -X DELETE http://localhost:8080/graphql
+curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code}\n" -X DELETE https://localhost:8080/graphql
 
 # Peticiones demasiado seguidas: después de la ráfaga de 30 empiezan los 429
-for i in $(seq 60); do curl -s -o /dev/null -w "%{http_code} " -X POST http://localhost:8080/graphql; done; echo
+for i in $(seq 60); do curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code} " -X POST https://localhost:8080/graphql; done; echo
 
 # Lo mismo por la entrada móvil (:8081)
-curl -s -o /dev/null -w "%{http_code}\n" -A sqlmap http://localhost:8081/graphql
+curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code}\n" -A sqlmap https://localhost:8081/graphql
 ```
 
 En el bucle, las primeras respuestas son un error del gateway (un `4xx` como `400`), porque la petición va sin consulta GraphQL y sí llega al gateway. Lo que importa es que después aparezcan los `429`: esas ya no pasan del firewall.
@@ -80,12 +85,12 @@ En el bucle, las primeras respuestas son un error del gateway (un `4xx` como `40
 
 1. Mira con qué IP llegas al firewall:
    ```bash
-   curl -s -o /dev/null http://localhost:8080/
+   curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null https://localhost:8080/
    docker compose logs --tail 1 pz-waf-fw
    ```
    La IP es el primer campo de la línea.
 2. Agrégala en `listas/ip-bloqueadas.conf` (por ejemplo `172.18.0.1 1;`) y recarga con `docker compose exec pz-waf-fw nginx -s reload`.
-3. `curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/` debe dar `403`.
+3. `curl --cacert Pz_waf_fw/certs/ca.crt -s -o /dev/null -w "%{http_code}\n" https://localhost:8080/` debe dar `403`.
 4. Quita la línea y vuelve a recargar.
 
 Las peticiones bloqueadas por frecuencia también quedan en el log, con el mensaje `limiting requests`:
