@@ -8,7 +8,7 @@ Esta vista muestra la **estructura en capas** de Pujaz: grupos de piezas del sis
 
 | Elemento | Qué es en Pujaz |
 |---|---|
-| **Tier** | Separación física: dónde corre cada componente. Hay 4 tiers. |
+| **Tier** | Separación física: dónde corre cada componente. Hay 6 tiers. |
 | **Layer** | Separación lógica dentro de un componente. Sus nombres dependen del tipo de componente (sección 2). |
 | **Layer segment** | Una pieza dentro de una layer, nombrada por lo que hace. |
 
@@ -30,10 +30,28 @@ Esta vista muestra la **estructura en capas** de Pujaz: grupos de piezas del sis
 
 El fuente editable está en [vista-capas.drawio](vista-capas.drawio).
 
+**Convenciones de carpetas** (también en el cuadro *Convenciones de carpetas* del diagrama)
+
+| Elemento | Forma y color |
+|---|---|
+| Tier | Carpeta azul (`#DAE8FC`), con el nombre en negrita |
+| Componente | Caja blanca con borde negro grueso y el nombre en negrita |
+| Layer | Carpeta verde (`#D5E8D4`), dentro de un componente |
+| Segment | Carpeta amarilla (`#FFF2CC`), dentro de una layer |
+
+Las etiquetas no llevan «tier», «layer» ni «segment»: el color dice qué es cada carpeta.
+
+**Convenciones de flechas** (también en el cuadro *Convenciones de flechas* del diagrama)
+
+Todas las flechas son punteadas y apuntan de quien usa a quien es usado. No llevan el nombre de la relación escrito: el color y el grosor lo indican.
+
+| Flecha | Relación | Dónde se usa |
+|---|---|---|
+| Gris fina | *allowed-to-use* | Entre piezas de un mismo componente, hacia la layer de abajo. |
+| Negra | *allowed-to-use* | Entre componentes o entre tiers: salidas de un componente hacia otro. |
+| Roja gruesa | *allowed-to-use-below* | Cuando se salta una o más capas. Dentro de un componente baja por su costado derecho, para no cruzar sobre otras piezas. Las de los proxies bajan por el espacio libre a la derecha de Pz_web_fe hasta Pz_api_ag. |
+
 **Cómo leerlo**
-- **Flecha punteada gris fina:** *allowed-to-use* entre piezas.
-- **Flecha punteada roja gruesa:** *allowed-to-use-below*. Baja por el costado derecho del componente, para no cruzar sobre otras piezas.
-- **Flechas negras con texto:** salidas de un componente hacia otro y relaciones entre tiers.
 - **Las piezas de una misma layer también se usan entre sí** (por ejemplo, el enrutador llama a cada endpoint). Para que el diagrama se lea, esas flechas no se dibujan; están en las tablas de abajo.
 - **Las flechas indican quién usa a quién.** Cuando un evento llega por el broker, la flecha va desde la pieza que se suscribe (el consumidor) hacia Pz_eventos_mq, aunque el evento *entre* por ahí.
 
@@ -41,26 +59,39 @@ El fuente editable está en [vista-capas.drawio](vista-capas.drawio).
 
 | Tier | Qué agrupa | Dónde corre |
 |---|---|---|
-| Presentación | Pz_web_fe, Pz_movil_fe | Navegador y servidor web; celular del usuario |
+| Cliente | Pz_movil_fe | Celular del usuario, fuera de la zona interna |
+| Perímetro | Pz_waf_fw, Pz_web_rp, Pz_movil_rp | Contenedores en las redes `public`, `perimetro` y `edge`. Solo Pz_waf_fw publica puertos (8080 web y 8081 móvil). |
+| Presentación web | Pz_web_fe | Contenedor propio (SSR); su parte interactiva corre después en el navegador |
 | Orquestación | Pz_api_ag | Contenedor propio en la red interna |
 | Lógica de negocio | Pz_subastas_cl, Pz_billetera_cl, Pz_usuarios_cl, Pz_catalogo_cl, Pz_postpuja_cl, Pz_notificaciones_cl, Pz_cierre_cl | Un contenedor por componente en la red interna |
 | Datos | Pz_subastas_db, Pz_billetera_db, Pz_usuarios_db, Pz_catalogo_db, Pz_postpuja_db, Pz_notificaciones_db, Pz_eventos_mq | Un contenedor por base y el broker, en la red interna |
 
+El navegador web no es un tier: igual que en la [vista C&C](../cc/vista-cc-broker.md), es un actor externo que entra por Pz_waf_fw.
+
 | Desde | Hacia | Relación | Por qué |
 |---|---|---|---|
-| Presentación | Orquestación | *allowed-to-use* | La web y la móvil solo hablan con Pz_api_ag. |
+| Cliente | Perímetro | *allowed-to-use* | La app móvil solo habla con Pz_waf_fw, por HTTPS y WSS. |
+| Pz_waf_fw | Pz_web_rp, Pz_movil_rp | *allowed-to-use* (componentes vecinos) | El WAF termina TLS, filtra y pasa cada canal a su proxy. |
+| Perímetro | Presentación web | *allowed-to-use* | Pz_web_rp envía las páginas a Pz_web_fe. |
+| Pz_web_rp, Pz_movil_rp | Pz_api_ag | *allowed-to-use-below* | La ruta `/graphql` va directo al gateway. Se salta el tier Presentación web. |
+| Presentación web | Orquestación | *allowed-to-use* | Pz_web_fe solo habla con Pz_api_ag, desde el servidor y desde el navegador. |
 | Orquestación | Lógica de negocio | *allowed-to-use* | Pz_api_ag llama a los microservicios. |
 | Lógica de negocio | Datos | *allowed-to-use* | Cada microservicio usa su propia base y el broker. |
 | Pz_api_ag | Pz_eventos_mq | *allowed-to-use-below* | El gateway recibe `PrecioActualizado` para el precio en vivo. Se salta el tier de Lógica de negocio. |
 | Pz_cierre_cl | Pz_subastas_cl | *allowed-to-use* (componentes vecinos) | El cierre pide a subastas que cierre las vencidas. |
-| Pz_subastas_cl | Pz_billetera_cl | *allowed-to-use* (componentes vecinos) | Hoy subastas reserva en la billetera al pujar. Según el contrato v3 eso pasa al gateway y esta relación desaparece. |
+
+### Por qué la web y la móvil están en tiers distintos
+
+1. **Corren en lugares distintos:** la APK está en el celular, fuera de la zona interna. Pz_web_fe es un contenedor dentro de la zona interna, detrás del WAF y del proxy web.
+2. **Si compartieran tier, habría una relación hacia arriba:** Pz_web_rp (Perímetro) usa a Pz_web_fe. Con Pz_web_fe encima del Perímetro, esa relación iría de una capa inferior a una superior.
+3. **La regla queda estricta casi en todo:** la única excepción nueva es la ruta `/graphql` de los proxies, marcada como *allowed-to-use-below*.
 
 ### Dónde va Pz_eventos_mq y por qué
 
 Pz_eventos_mq va en el tier **Datos**:
 1. **Es un proceso físico aparte sin lógica de negocio:** recibe, guarda en colas durables y entrega mensajes. Cumple el mismo papel que una base de datos: la usan los servicios y no decide nada.
 2. **Mantiene la regla estricta en casi todo el sistema:** cada microservicio usa sus bases y el broker con *allowed-to-use*. Si el broker tuviera un tier propio entre Lógica de negocio y Datos, todos los usos de microservicio → base pasarían a ser *allowed-to-use-below*.
-3. **Deja una sola excepción, explícita:** Pz_api_ag → Pz_eventos_mq, que es *allowed-to-use-below*.
+3. **Deja una sola excepción en los tiers internos, explícita:** Pz_api_ag → Pz_eventos_mq, que es *allowed-to-use-below*.
 4. **No va en Lógica de negocio:** ahí sería un componente usado de forma lateral por todos, aunque no tiene lógica.
 
 ## 2. Layers según el tipo de componente
@@ -68,6 +99,8 @@ Pz_eventos_mq va en el tier **Datos**:
 | Tipo | Componentes | Layers (de arriba hacia abajo) |
 |---|---|---|
 | Front-end | Pz_web_fe, Pz_movil_fe | **Vistas** → **Estado y sesión** → **Cliente GraphQL** |
+| WAF | Pz_waf_fw | **Canal seguro** → **Filtrado** → **Reenvío** |
+| Proxy inverso | Pz_web_rp, Pz_movil_rp | **Enrutamiento** → **Reenvío** |
 | Orquestador | Pz_api_ag | **Interfaz** → **Orquestación** → **Integración** |
 | Microservicio y worker | Pz_subastas_cl, Pz_billetera_cl, Pz_usuarios_cl, Pz_catalogo_cl, Pz_postpuja_cl, Pz_notificaciones_cl | **Interfaz** → **Lógica de negocio** → **Acceso a datos e integración** |
 | Worker sin lógica propia | Pz_cierre_cl | **Interfaz** → **Acceso a datos e integración** |
@@ -75,6 +108,10 @@ Pz_eventos_mq va en el tier **Datos**:
 - **Vistas:** las pantallas que ve el usuario.
 - **Estado y sesión:** la sesión del usuario y lo que las pantallas comparten.
 - **Cliente GraphQL:** la comunicación con el gateway.
+- **Canal seguro:** recibe la conexión cifrada (HTTPS y WSS) y la descifra.
+- **Filtrado:** decide si la petición pasa o se bloquea.
+- **Enrutamiento:** elige el destino según la ruta pedida.
+- **Reenvío:** pasa la petición al siguiente componente por la red interna.
 - **Interfaz:** recibe las peticiones o los eventos y responde.
 - **Orquestación:** coordina a varios microservicios para atender una sola operación.
 - **Lógica de negocio:** las reglas del componente.
@@ -85,39 +122,82 @@ Pz_eventos_mq va en el tier **Datos**:
 
 En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma layer, en la de abajo o fuera del componente.
 
-### 3.1 Pz_web_fe · front-end
+### 3.1 Pz_movil_fe · front-end (tier Cliente)
+
+| Layer | Pieza | Qué hace | Usa a |
+|---|---|---|---|
+| Vistas | Pantallas de subastas | Lista y detalle de las subastas, con la puja. | Widgets compartidos; Traducción de errores; Formato; Resolución de URLs de imágenes; Consultas y mutaciones (*below*) |
+| Vistas | Pantallas de cuenta | Login, registro, perfil y billetera. | Widgets compartidos; Controlador de sesión; Consultas y mutaciones (*below*) |
+| Vistas | Navegación y rutas privadas | Define las rutas de la app y manda al login si se abre la billetera o el perfil sin sesión. | Pantallas de subastas; Pantallas de cuenta; Controlador de sesión |
+| Vistas | Pantalla de configuración de depuración | Solo en modo depuración: pide el host del servidor antes de arrancar y lo guarda. | Configuración de URLs (*below*) |
+| Vistas | Widgets compartidos | La estructura común de las pantallas. | — |
+| Estado y sesión | Controlador de sesión | Inicia, restaura y cierra la sesión y guarda el token de forma segura. | Repositorio de autenticación; Fábrica del cliente GraphQL |
+| Estado y sesión | Traducción de errores | Convierte los códigos del contrato en mensajes. | — |
+| Estado y sesión | Formato | Montos y fechas para mostrar. | — |
+| Estado y sesión | Resolución de URLs de imágenes | Completa las rutas relativas de las fotos con la dirección del servidor de Pujaz. | Configuración de URLs |
+| Cliente GraphQL | Consultas y mutaciones | Las operaciones GraphQL que usa la app. | — |
+| Cliente GraphQL | Repositorio de autenticación | Login y registro contra el gateway. | Consultas y mutaciones |
+| Cliente GraphQL | Fábrica del cliente GraphQL | Arma el cliente con las direcciones y el token guardado. | Cliente GraphQL; Configuración de URLs |
+| Cliente GraphQL | Cliente GraphQL | Conexión HTTPS y WSS con el servidor. | **sale a Pz_waf_fw** |
+| Cliente GraphQL | Configuración de URLs | Las direcciones del servidor según el ambiente (HTTPS y WSS por defecto) y el host elegido en modo depuración. | — |
+
+**Recorrido de un inicio de sesión:** *Pantallas de cuenta* → *Controlador de sesión* → *Repositorio de autenticación* → *Consultas y mutaciones* y *Cliente GraphQL* → sale a **Pz_waf_fw** → **Pz_movil_rp** → **Pz_api_ag**.
+
+### 3.2 Pz_waf_fw · WAF (tier Perímetro)
+
+| Layer | Pieza | Qué hace | Usa a |
+|---|---|---|---|
+| Canal seguro | Terminación TLS | Presenta el certificado, negocia TLS 1.2 o 1.3 en el puerto 8080 (web) y 8081 (móvil) y rechaza HTTP en claro. | Las cuatro piezas de Filtrado |
+| Canal seguro | Salud interna | Responde `/healthz` solo en `127.0.0.1:8090`, para el healthcheck del contenedor. | — |
+| Filtrado | Listas de IP | Bloquea las IP de la lista negra (403) y exime a las confiables de los límites. | Reenvío al proxy del canal |
+| Filtrado | Límites de frecuencia y conexiones | 10 peticiones/s por IP a `/graphql`, 30/s al resto y 30 conexiones abiertas a la vez; si se pasan, responde 429. | Reenvío al proxy del canal |
+| Filtrado | Reglas de método, agente y URI | Solo GET, HEAD, POST y OPTIONS. Bloquea herramientas de escaneo, firmas de inyección SQL, XSS y recorrido de directorios, archivos ocultos y rutas que Pujaz no sirve. | Reenvío al proxy del canal |
+| Filtrado | Protección contra conexiones lentas y peticiones enormes | Tiempos máximos para cabeceras y cuerpo, y cuerpo de máximo 1 MB. | Reenvío al proxy del canal |
+| Reenvío | Reenvío al proxy del canal | Pasa la petición por HTTP/WS interno a Pz_web_rp (8080) o Pz_movil_rp (8081) con `X-Forwarded-Proto: https`. | **sale a Pz_web_rp** o **sale a Pz_movil_rp** |
+
+**Recorrido de una petición móvil:** entra por *Terminación TLS* → pasa las cuatro piezas de *Filtrado* → *Reenvío al proxy del canal* → sale a **Pz_movil_rp**.
+
+El detalle del canal cifrado (escenario de seis partes, táctica y patrón) está en [canal-seguro.md](../../canal-seguro.md).
+
+### 3.3 Pz_web_rp · proxy inverso (tier Perímetro)
+
+| Layer | Pieza | Qué hace | Usa a |
+|---|---|---|---|
+| Enrutamiento | Ruta `/graphql` | Consultas, mutaciones y el WebSocket del precio en vivo. | Reenvío a destino |
+| Enrutamiento | Ruta de páginas | Todo lo demás: páginas, archivos y fotos. | Reenvío a destino |
+| Enrutamiento | Salud | Responde si el proxy está vivo. | — |
+| Reenvío | Reenvío a destino | Envía la petición con las cabeceras de origen. | **sale a Pz_api_ag** (*below*); **sale a Pz_web_fe** |
+
+**Recorrido de una página:** *Ruta de páginas* → *Reenvío a destino* → sale a **Pz_web_fe**.
+
+### 3.4 Pz_movil_rp · proxy inverso (tier Perímetro)
+
+| Layer | Pieza | Qué hace | Usa a |
+|---|---|---|---|
+| Enrutamiento | Ruta `/graphql` | Consultas, mutaciones y el WebSocket del precio en vivo. | Reenvío al gateway |
+| Enrutamiento | Resto: 404 | Cualquier otra ruta responde 404. | — |
+| Enrutamiento | Salud | Responde si el proxy está vivo. | — |
+| Reenvío | Reenvío al gateway | Envía la petición con las cabeceras de origen. | **sale a Pz_api_ag** (*below*) |
+
+**Recorrido de una consulta:** *Ruta `/graphql`* → *Reenvío al gateway* → sale a **Pz_api_ag**.
+
+### 3.5 Pz_web_fe · front-end (tier Presentación web)
 
 | Layer | Pieza | Qué hace | Usa a |
 |---|---|---|---|
 | Vistas | Páginas renderizadas en el servidor | Arman cada página (catálogo, detalle, login, registro, perfil, billetera, publicar) antes de enviarla al navegador. | Componentes interactivos; Cliente del servidor (*below*) |
-| Vistas | Componentes interactivos | Formularios de login, registro, puja y publicación; panel de subasta, galería y cuenta regresiva. | Sesión del usuario; Formato; Cliente del navegador (*below*) |
+| Vistas | Componentes interactivos | Formularios de login, registro, puja y publicación; panel de subasta, galería y cuenta regresiva. | Sesión del usuario; Formato; Reloj compartido; Cliente del navegador (*below*) |
 | Estado y sesión | Sesión del usuario | Sabe quién inició sesión y lo comparte con los componentes. | Acciones del servidor; Cliente del navegador |
 | Estado y sesión | Acciones del servidor | Guardan y borran la cookie de sesión. | — |
 | Estado y sesión | Formato de precios y tiempos | Muestra montos en pesos y el tiempo restante. | — |
-| Cliente GraphQL | Cliente del navegador | Envía consultas y mutaciones por HTTP y abre la suscripción por WebSocket. | Traducción de errores; **sale a Pz_api_ag** |
-| Cliente GraphQL | Cliente del servidor | Consulta al gateway desde el servidor web para armar las páginas. | Traducción de errores; **sale a Pz_api_ag** |
+| Estado y sesión | Reloj compartido | Una sola hora que avanza cada segundo para la cuenta regresiva y los "hace 5 min". En el servidor no corre, para que el HTML coincida al cargar. | — |
+| Cliente GraphQL | Cliente del navegador | Envía consultas y mutaciones por HTTP y abre la suscripción por WebSocket. Desde el navegador pasa por Pz_waf_fw y Pz_web_rp. | Traducción de errores; **sale a Pz_api_ag** |
+| Cliente GraphQL | Cliente del servidor | Consulta al gateway desde el servidor web, por la red interna, para armar las páginas. | Traducción de errores; **sale a Pz_api_ag** |
 | Cliente GraphQL | Traducción de errores | Convierte los códigos del contrato en mensajes para el usuario. | — |
 
-**Recorrido de una puja:** *Componentes interactivos* (formulario de puja) → *Sesión del usuario* → *Cliente del navegador* → sale a **Pz_api_ag**.
+**Recorrido de una puja:** *Componentes interactivos* (formulario de puja) → *Sesión del usuario* → *Cliente del navegador* → sale a **Pz_api_ag** (por Pz_waf_fw y Pz_web_rp).
 
-### 3.2 Pz_movil_fe · front-end
-
-| Layer | Pieza | Qué hace | Usa a |
-|---|---|---|---|
-| Vistas | Pantallas de subastas | Lista y detalle de las subastas, con la puja. | Widgets compartidos; Traducción de errores; Formato; Consultas y mutaciones (*below*) |
-| Vistas | Pantallas de cuenta | Login, registro, perfil y billetera. | Widgets compartidos; Controlador de sesión; Consultas y mutaciones (*below*) |
-| Vistas | Widgets compartidos | La estructura común de las pantallas. | — |
-| Estado y sesión | Controlador de sesión | Inicia y cierra sesión y guarda el token de forma segura. | Repositorio de autenticación; Cliente GraphQL |
-| Estado y sesión | Traducción de errores | Convierte los códigos del contrato en mensajes. | — |
-| Estado y sesión | Formato | Montos y fechas para mostrar. | — |
-| Cliente GraphQL | Consultas y mutaciones | Las operaciones GraphQL que usa la app. | — |
-| Cliente GraphQL | Repositorio de autenticación | Login y registro contra el gateway. | Consultas y mutaciones |
-| Cliente GraphQL | Cliente GraphQL | Conexión HTTP y WebSocket con el gateway. | Configuración de URLs; **sale a Pz_api_ag** |
-| Cliente GraphQL | Configuración de URLs | Las direcciones del gateway según el ambiente. | — |
-
-**Recorrido de un inicio de sesión:** *Pantallas de cuenta* → *Controlador de sesión* → *Repositorio de autenticación* → *Consultas y mutaciones* y *Cliente GraphQL* → sale a **Pz_api_ag**.
-
-### 3.3 Pz_api_ag · orquestador
+### 3.6 Pz_api_ag · orquestador (tier Orquestación)
 
 | Layer | Pieza | Qué hace | Usa a |
 |---|---|---|---|
@@ -140,7 +220,7 @@ En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma laye
 
 **Recorrido del precio en vivo:** el evento entra por *Consumidor de PrecioActualizado* → *Precio en vivo* relee la subasta con *Clientes de los microservicios* → la envía por *Receptor WebSocket* a los suscriptores.
 
-### 3.4 Pz_subastas_cl · microservicio
+### 3.7 Pz_subastas_cl · microservicio
 
 | Layer | Pieza | Qué hace | Usa a |
 |---|---|---|---|
@@ -150,30 +230,29 @@ En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma laye
 | Interfaz | Cerrar vencidas | Lo llama Pz_cierre_cl cada cierto tiempo. | Cierre de subastas |
 | Interfaz | Salud | Responde si el servicio está vivo. | — |
 | Lógica de negocio | Registro de subastas | Crea subastas y calcula si están abiertas o cerradas. | Repositorio de subastas |
-| Lógica de negocio | Validación y registro de pujas | Subasta abierta y al menos 100 sobre el precio actual; registra la puja y avisa. | Repositorio de subastas; Publicador de eventos; Cliente de billetera |
+| Lógica de negocio | Validación y registro de pujas | Subasta abierta y al menos 100 sobre el precio actual; registra la puja con la reserva que hizo el gateway y avisa. Si el mismo usuario sube su propia puja, devuelve su reserva anterior para que el gateway la libere. | Repositorio de subastas; Publicador de eventos |
 | Lógica de negocio | Cierre de subastas | Cierra las vencidas y avisa quién ganó. | Repositorio de subastas; Publicador de eventos |
 | Acceso a datos e integración | Repositorio de subastas | Lee y escribe subastas y pujas; bloquea la subasta mientras se puja. | **sale a Pz_subastas_db** |
 | Acceso a datos e integración | Publicador de eventos | Publica `PujaSuperada`, `PrecioActualizado` y `SubastaCerrada`. | **sale a Pz_eventos_mq** |
-| Acceso a datos e integración | Cliente de billetera | Reserva y reintegra saldo en la billetera. | **sale a Pz_billetera_cl** |
 
 **Recorrido de una puja:** *Enrutador* → *Recibir pujas* → *Validación y registro de pujas* → *Repositorio de subastas* (sale a **Pz_subastas_db**) y *Publicador de eventos* (sale a **Pz_eventos_mq**).
 
-### 3.5 Pz_billetera_cl · microservicio
+### 3.8 Pz_billetera_cl · microservicio
 
 | Layer | Pieza | Qué hace | Usa a |
 |---|---|---|---|
 | Interfaz | Enrutador | Lleva cada petición a su endpoint. | Endpoints de billetera; Endpoints de usuarios |
 | Interfaz | Endpoints de billetera | Saldo, recarga, reservar y reintegrar. | Reglas de saldo |
 | Interfaz | Endpoints de usuarios (entrega 1) | Registro, credenciales y perfil, heredados de la entrega 1. | Usuarios heredados |
-| Interfaz | Consumidor de eventos | `PujaSuperada` → reintegro; `SubastaCerrada` → cobro. | Reglas de saldo; **sale a Pz_eventos_mq** |
-| Lógica de negocio | Reglas de saldo | Recargar con código válido, reservar con saldo suficiente, reintegrar y cobrar. | Repositorio de billetera |
+| Interfaz | Consumidor de eventos | `UsuarioRegistrado` → billetera en 0; `PujaSuperada` → reintegro; `SubastaCerrada` → cobro. | Reglas de saldo; **sale a Pz_eventos_mq** |
+| Lógica de negocio | Reglas de saldo | Crear la billetera, recargar con código válido, reservar con saldo suficiente, reintegrar y cobrar. | Repositorio de billetera |
 | Lógica de negocio | Usuarios heredados | Registro con billetera en 0 y verificación de contraseña. | Repositorio de usuarios |
 | Acceso a datos e integración | Repositorio de billetera | Saldos y movimientos. | **sale a Pz_billetera_db** |
 | Acceso a datos e integración | Repositorio de usuarios | Usuarios de la entrega 1. | **sale a Pz_billetera_db** |
 
 **Recorrido de un reintegro:** el evento entra por *Consumidor de eventos* → *Reglas de saldo* → *Repositorio de billetera* → sale a **Pz_billetera_db**.
 
-### 3.6 Pz_usuarios_cl · microservicio
+### 3.9 Pz_usuarios_cl · microservicio
 
 | Layer | Pieza | Qué hace | Usa a |
 |---|---|---|---|
@@ -188,7 +267,7 @@ En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma laye
 
 **Recorrido de un registro:** *Endpoints de usuarios* → *Registro y perfil* → *Cifrado de contraseñas*, *Repositorio de usuarios* (sale a **Pz_usuarios_db**) y *Publicador de UsuarioRegistrado* (sale a **Pz_eventos_mq**).
 
-### 3.7 Pz_catalogo_cl · microservicio
+### 3.10 Pz_catalogo_cl · microservicio
 
 | Layer | Pieza | Qué hace | Usa a |
 |---|---|---|---|
@@ -200,7 +279,7 @@ En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma laye
 
 **Recorrido de una búsqueda:** *Endpoints de ítems* → *Búsqueda y creación de ítems* → *Repositorio de ítems* → sale a **Pz_catalogo_db**.
 
-### 3.8 Pz_postpuja_cl · microservicio
+### 3.11 Pz_postpuja_cl · microservicio
 
 | Layer | Pieza | Qué hace | Usa a |
 |---|---|---|---|
@@ -214,18 +293,18 @@ En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma laye
 
 **Recorrido de una subasta cerrada:** el evento entra por *Consumidor de SubastaCerrada* → *Registro de entregas* → *Repositorio de entregas* → sale a **Pz_postpuja_db**.
 
-### 3.9 Pz_notificaciones_cl · worker
+### 3.12 Pz_notificaciones_cl · worker
 
 | Layer | Pieza | Qué hace | Usa a |
 |---|---|---|---|
-| Interfaz | Consumidor de eventos | Recibe `PujaSuperada` y `SubastaCerrada`. | Armado de la notificación; Almacén de notificaciones (*below*); **sale a Pz_eventos_mq** |
+| Interfaz | Consumidor de eventos | Recibe `UsuarioRegistrado` (bienvenida), `PujaSuperada` y `SubastaCerrada`. | Armado de la notificación; Almacén de notificaciones (*below*); **sale a Pz_eventos_mq** |
 | Interfaz | Consulta de notificaciones | Devuelve las notificaciones de un usuario. | Almacén de notificaciones (*below*) |
 | Lógica de negocio | Armado de la notificación | Decide el destinatario y el mensaje. | — |
 | Acceso a datos e integración | Almacén de notificaciones | Guarda y lee las notificaciones. | **sale a Pz_notificaciones_db** |
 
 **Recorrido de un evento:** entra por *Consumidor de eventos* → *Armado de la notificación* → el consumidor guarda con *Almacén de notificaciones* → sale a **Pz_notificaciones_db**.
 
-### 3.10 Pz_cierre_cl · worker
+### 3.13 Pz_cierre_cl · worker
 
 | Layer | Pieza | Qué hace | Usa a |
 |---|---|---|---|
@@ -237,7 +316,9 @@ En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma laye
 ## 4. Patrones
 
 - **Estructura en capas:** el patrón de esta vista. Se usa de forma estricta (*allowed-to-use*) entre tiers y entre las layers de cada componente, y de forma relajada (*allowed-to-use-below*) solo en los casos marcados.
-- **Cliente-servidor y SOFEA sobre microservicios** (ver [estilos arquitectónicos](../../estilos_arquitectonicos.md)): los tiers de Presentación, Orquestación y Lógica de negocio son la forma física de esos estilos. La presentación es un cliente separado y el gateway es el único servidor que ve.
+- **Cliente-servidor y SOFEA sobre microservicios** (ver [estilos arquitectónicos](../../estilos_arquitectonicos.md)): los tiers de Cliente, Presentación web, Orquestación y Lógica de negocio son la forma física de esos estilos. La presentación es un cliente separado y el gateway es el único servidor de datos que ve.
+- **Secure Channel con terminación TLS en el perímetro** (ver [canal seguro](../../canal-seguro.md)): el cifrado va del cliente a Pz_waf_fw, que lo termina en su layer Canal seguro. Desde ahí hacia adentro el tráfico va por la red interna, separada por zonas.
+- **Proxy inverso:** Pz_web_rp y Pz_movil_rp separan los dos canales detrás del WAF y deciden a dónde va cada ruta. Por eso están en el tier Perímetro y no en Presentación.
 - **El gateway como orquestador** (ver [vista C&C](../cc/vista-cc-broker.md)): Pz_api_ag no tiene reglas de negocio propias; coordina a los microservicios. Por eso tiene su propio tier, **Orquestación**, y su capa del medio se llama Orquestación.
 
 ## 5. Restricciones y observaciones
@@ -245,7 +326,7 @@ En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma laye
 | Restricción | ¿Se cumple? |
 |---|---|
 | Cada pieza en exactamente una layer | Sí. |
-| Al menos dos layers | Sí: Pz_cierre_cl tiene dos y los demás tres. |
+| Al menos dos layers | Sí: Pz_cierre_cl, Pz_web_rp y Pz_movil_rp tienen dos y los demás tres. |
 | Sin relaciones circulares | Sí: ninguna pieza usa a una de una capa superior. |
 
 **Observaciones**
@@ -253,5 +334,6 @@ En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma laye
 2. **En Pz_subastas_cl, la Lógica de negocio abre y cierra la transacción de la base.** Conoce detalles que deberían quedar en Acceso a datos e integración.
 3. **Pz_billetera_cl todavía atiende la responsabilidad de usuarios de la entrega 1,** que ahora le corresponde a Pz_usuarios_cl.
 4. **Pz_catalogo_cl conserva un endpoint heredado con datos fijos,** que no usa ningún otro componente.
-5. **La relación Pz_subastas_cl → Pz_billetera_cl debe desaparecer** cuando subastas aplique el contrato v3.
-6. **En Pz_api_ag, la pieza *Delegación directa* reúne las operaciones de perfil, billetera, entregas y notificaciones, que solo pasan la llamada a un servicio.** La coordinación de varios servicios está en la autenticación, la puja, la creación de ítems, la composición de consultas y el precio en vivo.
+5. **En Pz_api_ag, la pieza *Delegación directa* reúne las operaciones de perfil, billetera, entregas y notificaciones, que solo pasan la llamada a un servicio.** La coordinación de varios servicios está en la autenticación, la puja, la creación de ítems, la composición de consultas y el precio en vivo.
+6. **Pz_waf_fw está hecho con Nginx y reglas propias,** no con ModSecurity y OWASP CRS como propone la [vista C&C](../cc/vista-cc-broker.md). Esta vista describe lo que hay hoy en el código.
+7. **Pz_waf_fw, Pz_web_rp y Pz_movil_rp no tienen código de aplicación:** son configuración de Nginx. Sus piezas se nombran por lo que hace cada bloque de la configuración.
