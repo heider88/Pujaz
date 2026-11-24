@@ -2,7 +2,7 @@
 
 ## Descripción
 
-Resume cómo se protege Pujaz hoy, qué cambio proponemos para la autenticación y en qué se diferencia el prototipo de lo que se hace en producción. Los componentes que se nombran son los de la [vista C&C](vista-cc.md).
+Resume cómo se protege Pujaz hoy, qué cambio proponemos para la autenticación y en qué se diferencia el prototipo de lo que se hace en producción. Los componentes que se nombran son los de la [vista C&C](vistas/cc/vista-cc-broker.md).
 
 ## Cómo está hoy
 

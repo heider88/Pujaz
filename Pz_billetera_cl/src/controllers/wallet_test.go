@@ -30,7 +30,7 @@ func TestWalletEndpoints(t *testing.T) {
 	defer server.Close()
 
 	t.Run("Get Wallet Exitoso", func(t *testing.T) {
-		res, err := http.Get(server.URL + "/users/1/wallet/deposits")
+		res, err := http.Get(server.URL + "/users/1/wallet")
 		if err != nil {
 			t.Fatal(err)
 		}

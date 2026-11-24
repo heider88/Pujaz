@@ -1,16 +1,40 @@
 services:
-  pz-web-proxy:
-    image: nginx:stable-alpine
+  # Firewall de aplicación: único punto publicado. Bloquea IP de la lista negra,
+  # limita la frecuencia por IP y filtra peticiones maliciosas antes de los proxies.
+  pz-waf-fw:
+    build:
+      context: ./Pz_waf_fw
     ports:
-    - ${NGINX_PORT:-8080}:80
+    - ${NGINX_PORT:-8080}:8080
+    - ${NGINX_MOVIL_PORT:-8081}:8081
+    volumes:
+    - ./Pz_waf_fw/listas:/etc/nginx/listas:ro
+    networks:
+    - public
+    - perimetro
+    depends_on:
+      pz-web-rp:
+        condition: service_healthy
+      pz-movil-rp:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8080/healthz && wget -q -O /dev/null http://127.0.0.1:8081/healthz
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  pz-web-rp:
+    image: nginx:stable-alpine
     environment:
       GATEWAY_PORT: ${PORT:-4000}
       NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$$
     volumes:
     - ./docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
     networks:
-    - public
-    - backend
+    - perimetro
+    - edge
     depends_on:
       pz-web-fe:
         condition: service_healthy
@@ -27,13 +51,40 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  pz-movil-rp:
+    image: nginx:stable-alpine
+    environment:
+      GATEWAY_PORT: ${PORT:-4000}
+      NGINX_ENVSUBST_FILTER: ^GATEWAY_PORT$$
+    volumes:
+    - ./docker/nginx/movil.conf.template:/etc/nginx/templates/default.conf.template:ro
+    networks:
+    - perimetro
+    - edge
+    depends_on:
+      pz-web-fe:
+        condition: service_healthy
+      pz-api-ag:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - -q
+      - -O
+      - /dev/null
+      - http://127.0.0.1/healthz
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   pz-web-fe:
     build:
       context: ./Pz_web_fe
     environment:
       GATEWAY_URL: http://pz-api-ag:${PORT:-4000}/graphql
     networks:
-    - backend
+    - edge
     depends_on:
       pz-api-ag:
         condition: service_healthy
@@ -69,7 +120,9 @@ services:
       MS_NOTIFICACIONES_URL: ${MS_NOTIFICACIONES_URL:-http://pz-notificaciones-cl:8000}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
+    - edge
     - backend
+    - eventos
     depends_on:
       pz-catalogo-cl:
         condition: service_healthy
@@ -106,7 +159,7 @@ services:
     - ./Pz_usuarios_cl/migrations/000001_init_schema.up.sql:/docker-entrypoint-initdb.d/000001_init_schema.sql:ro
     - ./Pz_usuarios_cl/migrations/000002_seed_data.up.sql:/docker-entrypoint-initdb.d/000002_seed_data.sql:ro
     networks:
-    - data
+    - datos-usuarios
     healthcheck:
       test:
       - CMD-SHELL
@@ -126,7 +179,7 @@ services:
     - ./Pz_subastas_cl/migrations/000001_init_schema.up.sql:/docker-entrypoint-initdb.d/000001_init_schema.sql:ro
     - ./Pz_subastas_cl/migrations/000002_seed_data.up.sql:/docker-entrypoint-initdb.d/000002_seed_data.sql:ro
     networks:
-    - data
+    - datos-subastas
     healthcheck:
       test:
       - CMD-SHELL
@@ -146,7 +199,7 @@ services:
     - ./Pz_billetera_cl/migrations/000001_init_schema.up.sql:/docker-entrypoint-initdb.d/000001_init_schema.sql:ro
     - ./Pz_billetera_cl/migrations/000002_seed_data.up.sql:/docker-entrypoint-initdb.d/000002_seed_data.sql:ro
     networks:
-    - data
+    - datos-billetera
     healthcheck:
       test:
       - CMD-SHELL
@@ -161,7 +214,7 @@ services:
     - mongo_data:/data/db
     - ./Pz_catalogo_db/init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks:
-    - data
+    - datos-catalogo
     healthcheck:
       test:
       - CMD
@@ -180,7 +233,7 @@ services:
       MONGO_URI: ${MONGO_URI:-mongodb://pz-catalogo-db:27017}
     networks:
     - backend
-    - data
+    - datos-catalogo
     depends_on:
       pz-catalogo-db:
         condition: service_healthy
@@ -199,7 +252,7 @@ services:
     volumes:
     - postpuja_data:/data/db
     networks:
-    - data
+    - datos-postpuja
     healthcheck:
       test:
       - CMD
@@ -219,7 +272,8 @@ services:
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
     - backend
-    - data
+    - eventos
+    - datos-postpuja
     depends_on:
       pz-postpuja-db:
         condition: service_healthy
@@ -241,7 +295,7 @@ services:
     volumes:
       - notificaciones_data:/data
     networks:
-      - data
+    - datos-notificaciones
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -252,13 +306,10 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
-    ports:
-    - 5672:5672
-    - 15672:15672
     volumes:
     - eventos_data:/var/lib/rabbitmq
     networks:
-    - backend
+    - eventos
     healthcheck:
       test:
       - CMD
@@ -277,7 +328,8 @@ services:
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
     - backend
-    - data
+    - eventos
+    - datos-subastas
     depends_on:
       pz-subastas-db:
         condition: service_healthy
@@ -309,8 +361,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://pz-usuarios-db:5432/${POSTGRES_USUARIOS_DB:-pujaz_usuarios}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
-      - backend
-      - data
+    - backend
+    - eventos
+    - datos-usuarios
     depends_on:
       pz-usuarios-db:
         condition: service_healthy
@@ -331,7 +384,8 @@ services:
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@pz-eventos-mq:5672/}
     networks:
     - backend
-    - data
+    - eventos
+    - datos-billetera
     depends_on:
       pz-billetera-db:
         condition: service_healthy
@@ -355,7 +409,7 @@ services:
     environment:
       SUBASTAS_SERVICE_URL: ${SUBASTAS_SERVICE_URL:-http://pz-subastas-cl:8081}
     networks:
-      - backend
+    - backend
     depends_on:
       pz-subastas-cl:
         condition: service_healthy
@@ -368,8 +422,9 @@ services:
       REDIS_HOST: pz-notificaciones-db
       REDIS_PORT: '6379'
     networks:
-      - backend
-      - data
+    - backend
+    - eventos
+    - datos-notificaciones
     depends_on:
       pz-eventos-mq:
         condition: service_healthy
@@ -383,12 +438,42 @@ services:
       start_period: 20s
     restart: unless-stopped
 networks:
+  # Zona pública: lo único que el host ve. Solo el firewall.
   public:
     driver: bridge
+  # Perímetro: el firewall y los dos proxies inversos. Nadie llega a los proxies sin pasar por el firewall.
+  perimetro:
+    driver: bridge
+    internal: true
+  # Borde: proxy, front web (SSR) y gateway. El front no ve los microservicios.
+  edge:
+    driver: bridge
+    internal: true
+  # Lógica: el gateway y los microservicios (REST). Cierre solo habla con subastas.
   backend:
     driver: bridge
     internal: true
-  data:
+  # Eventos: RabbitMQ y solo quienes publican o consumen.
+  eventos:
+    driver: bridge
+    internal: true
+  # Datos: una red por microservicio; nadie ve la base de otro (database per service).
+  datos-usuarios:
+    driver: bridge
+    internal: true
+  datos-subastas:
+    driver: bridge
+    internal: true
+  datos-billetera:
+    driver: bridge
+    internal: true
+  datos-catalogo:
+    driver: bridge
+    internal: true
+  datos-postpuja:
+    driver: bridge
+    internal: true
+  datos-notificaciones:
     driver: bridge
     internal: true
 volumes:

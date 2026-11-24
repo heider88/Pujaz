@@ -18,21 +18,28 @@ jobs:
       POSTGRES_PASSWORD: ci-only-password
     steps:
       - uses: actions/checkout@v4
-      - name: Validar Compose y sus 17 servicios
+      - name: Validar Compose y sus servicios
         run: |
           docker compose config --quiet
           docker compose config --format json | python3 -c '
           import json, sys
           c = json.load(sys.stdin)
           services = c["services"]
-          assert len(services) == 17, "Se esperan 17 componentes"
-          assert set(c["networks"]) == {"public", "backend", "data"}
-          assert c["networks"]["backend"]["internal"] and c["networks"]["data"]["internal"]
+          assert len(services) in (18, 19), "Se esperan 17 componentes"
+          # Segmentación de red (escenario 3): solo "public" sale al host.
+          for net, cfg in c["networks"].items():
+              assert net == "public" or cfg.get("internal"), net
           for name, service in services.items():
               nets = set(service["networks"])
-              assert "public" not in nets or name == "pz-web-proxy", name
+              # Solo el firewall está en la red pública y publica puertos.
+              assert "public" not in nets or name == "pz-waf-fw", name
+              assert not service.get("ports") or name == "pz-waf-fw", name
               if name.endswith("-db"):
-                  assert nets == {"data"}, name
+                  # Cada base vive sola en la red de su microservicio.
+                  dueno = "datos-" + name[len("pz-"):-len("-db")]
+                  assert nets == {dueno}, name
+                  miembros = [s for s, x in services.items() if dueno in x["networks"]]
+                  assert len(miembros) == 2, (dueno, miembros)  # la base y su microservicio
               if name != "pz-cierre-cl":
                   assert service.get("healthcheck"), name
               for dep, rule in service.get("depends_on", {}).items():
@@ -40,7 +47,7 @@ jobs:
                   assert nets.intersection(services[dep]["networks"]), (name, dep)
                   if rule["condition"] == "service_healthy":
                       assert services[dep].get("healthcheck"), dep
-          print("17 componentes y dependencias validados")'
+          print("Componentes, dependencias y segmentación validados")'
 
   go-tests:
     runs-on: ubuntu-latest
@@ -118,6 +125,7 @@ jobs:
           - pz-billetera-cl
           - pz-cierre-cl
           - pz-notificaciones-cl
+          - pz-waf-fw
     env:
       JWT_SECRET: ci-only-secret-not-for-deployment-123456789
       POSTGRES_PASSWORD: ci-only-password
@@ -126,3 +134,12 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Construir imagen sin publicar ni arrancar servicios
         run: docker compose build ${{ matrix.service }}
+
+  waf-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar la configuración del firewall (nginx -t)
+        run: |
+          docker build -t pz-waf-fw Pz_waf_fw
+          docker run --rm pz-waf-fw nginx -t

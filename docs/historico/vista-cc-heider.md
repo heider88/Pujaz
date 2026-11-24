@@ -2,9 +2,9 @@
 
 Esta vista presenta los elementos del sistema que tienen presencia en tiempo de ejecución: los componentes, que son los elementos de cómputo y de almacenamiento de datos, y los conectores, que son los caminos de interacción entre ellos. 
 
-![Vista C&C de Pujaz](vista-cc.png)
+![Vista C&C de Pujaz](vista-cc-heider.png)
 
-*El diagrama editable está en [vista-cc.drawio](vista-cc.drawio).*
+*El diagrama editable está en [vista-cc-heider.drawio](vista-cc-heider.drawio).*
 
 En la Entrega 2, el sistema ha pasado de tener 6 a **17 componentes**, distribuidos así: 2 de presentación, 8 de lógica (incluido el gateway), 1 broker de eventos y 6 de datos.
 

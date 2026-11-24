@@ -1,5 +1,8 @@
 # Vista de Despliegue — Pujaz (KAN-95)
 
+> **Versión principal (dasayo).** Todavía no incluye `pz-movil-rp` (KAN-107), el cambio de nombre `pz-web-proxy` → `pz-web-rp` ni la segmentación de redes por zonas (KAN-106).
+> Hay un borrador más reciente de Yeiner, [vista-despliegue-yeiner-2026-11-21.png](vista-despliegue-yeiner-2026-11-21.png) ([.drawio](vista-despliegue-yeiner-2026-11-21.drawio)), pendiente de correcciones.
+
 ## 1. Introducción
 
 La Entrega 2 de Pujaz se despliega mediante contenedores Docker coordinados por el archivo raíz `docker-compose.yml`. Compose define 17 servicios, sus imágenes o contextos de construcción, variables de entorno, redes, volúmenes y dependencias de arranque. Este modelo describe un despliegue sobre un host Docker; no configura un clúster ni alta disponibilidad.
@@ -85,8 +88,59 @@ Las redes separan entrada, lógica y persistencia. Nginx une `public` con `backe
 
 ## 5. Diagrama de despliegue
 
-![Vista de despliegue de Pujaz — Entrega 2](./vista-despliegue.png)
+![Vista de despliegue de Pujaz — Entrega 2](./vista-despliegue-dasayo.png)
 
-El diagrama representa estos 17 servicios, sus redes, publicaciones de puertos y volúmenes. El archivo editable es [vista-despliegue.drawio](./vista-despliegue.drawio), ubicado junto a este documento. Las etiquetas indican todas las redes de cada servicio; las flechas muestran rutas seleccionadas de comunicación, no el grafo completo de dependencias de arranque.
+El diagrama muestra el despliegue en el entorno local. A la izquierda están los componentes de software y a la derecha los nodos donde se ejecutan. Cada componente apunta a su destino con una flecha punteada etiquetada.
 
-**Artefactos:** se incluyen `vista-despliegue.png` y `vista-despliegue.drawio`. Los valores mostrados corresponden a los predeterminados de Compose; la imagen no implica que se haya validado un despliegue completo.
+### Elementos
+
+- **«device» Host:** máquina física o virtual donde se despliegan los 17 contenedores definidos en `docker-compose.yml`.
+- **«container»:** cada servicio de Compose. El color indica la capa:
+  - Azul: entrada y presentación (`pz-web-proxy`, `pz-web-fe`, `pz-api-ag`).
+  - Verde: servicios lógicos y el worker (`pz-usuarios-cl`, `pz-subastas-cl`, `pz-billetera-cl`, `pz-catalogo-cl`, `pz-postpuja-cl`, `pz-notificaciones-cl`, `pz-cierre-cl`).
+  - Naranja: broker de eventos (`pz-eventos-mq`).
+  - Amarillo: persistencia (`pz-usuarios-db`, `pz-subastas-db`, `pz-billetera-db`, `pz-catalogo-db`, `pz-postpuja-db`, `pz-notificaciones-db`).
+- **«exec env»:** entorno de ejecución dentro de cada contenedor, es decir, el runtime o servidor que ejecuta el componente:
+
+| Entorno de ejecución | Contenedores |
+| --- | --- |
+| Nginx (stable) | `pz-web-proxy` |
+| Node.js 22 (Next.js) | `pz-web-fe` |
+| Node.js 22 | `pz-api-ag` |
+| Java 17 JRE (Eclipse Temurin) | `pz-usuarios-cl` |
+| Alpine Linux (binario Go) | `pz-subastas-cl`, `pz-billetera-cl`, `pz-cierre-cl` |
+| Python 3.11 + Uvicorn | `pz-catalogo-cl`, `pz-postpuja-cl`, `pz-notificaciones-cl` |
+| RabbitMQ Server 3 (management) | `pz-eventos-mq` |
+| PostgreSQL Server 15 | `pz-usuarios-db`, `pz-subastas-db`, `pz-billetera-db` |
+| MongoDB Server 6 | `pz-catalogo-db`, `pz-postpuja-db` |
+| Redis Server | `pz-notificaciones-db` |
+
+- **«device» Portátil externo:** equipo del usuario final. Su entorno de ejecución es el navegador web.
+- **«device» Dispositivo móvil Android:** teléfono donde se instala la aplicación móvil. Su entorno de ejecución es **Android (ART) + Flutter Engine**:
+  - El código Dart del APK está compilado por adelantado (AOT) a código ARM nativo.
+  - El motor de Flutter (`libflutter.so`) lo ejecuta y dibuja la interfaz.
+  - Android lanza la app como un proceso con ART, que ejecuta la `FlutterActivity` de entrada y da acceso a las APIs del sistema mediante platform channels.
+
+### Relaciones
+
+Todas las relaciones son **`deployed_in` (componente → entorno de ejecución)**: el componente corre dentro de ese runtime. Se aplica a:
+
+- Los 17 servicios del host.
+- `Pz_web_fe (cliente)`: el bundle JavaScript que Next.js entrega y que se ejecuta en el navegador del portátil.
+- `Pz_movil_fe`: el APK Flutter que se ejecuta en el dispositivo Android.
+
+### Puertos
+
+Cada flecha `deployed_in` lleva etiquetas de puerto:
+
+- Una etiqueta sobre el borde del contenedor indica el puerto **externo** publicado en el host.
+- Una etiqueta junto al entorno de ejecución indica el puerto **interno** del contenedor.
+- Si solo aparece un número, el puerto es interno y no se publica al host.
+
+Solo hay dos casos con puertos publicados: `pz-web-proxy` (`8080 → 80`) y `pz-eventos-mq` (`5672 → 5672` y `15672 → 15672`). `pz-cierre-cl` no tiene puerto porque es un worker sin servidor HTTP. Todos los valores son los predeterminados de Compose (sección 3).
+
+### Alcance del diagrama
+
+El diagrama no dibuja las redes `public`, `backend` y `data` (sección 2), los volúmenes (sección 3), las dependencias de arranque ni los flujos de comunicación entre servicios. Representa solo dónde se ejecuta cada componente y qué puertos expone.
+
+**Artefactos:** [vista-despliegue-dasayo.png](./vista-despliegue-dasayo.png) y el archivo editable [vista-despliegue-dasayo.drawio](./vista-despliegue-dasayo.drawio), ubicados junto a este documento. La imagen no implica que se haya validado un despliegue completo.

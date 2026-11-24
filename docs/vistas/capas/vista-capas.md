@@ -2,7 +2,7 @@
 
 ## Descripción
 
-Esta vista muestra la **estructura en capas** de Pujaz: grupos de piezas del sistema que ofrecen un conjunto coherente de servicios, unidos por una relación *allowed-to-use* en un solo sentido. Usa los nombres de componentes de la [vista C&C](vista-cc.md).
+Esta vista muestra la **estructura en capas** de Pujaz: grupos de piezas del sistema que ofrecen un conjunto coherente de servicios, unidos por una relación *allowed-to-use* en un solo sentido. Usa los nombres de componentes de la [vista C&C](../cc/vista-cc-broker.md).
 
 **Elementos**
 
@@ -26,9 +26,9 @@ Esta vista muestra la **estructura en capas** de Pujaz: grupos de piezas del sis
 
 ## Diagrama
 
-![Vista de capas de Pujaz](vista_capas.png)
+![Vista de capas de Pujaz](vista-capas.png)
 
-El fuente editable está en [vista_capas.drawio](vista_capas.drawio).
+El fuente editable está en [vista-capas.drawio](vista-capas.drawio).
 
 **Cómo leerlo**
 - **Flecha punteada gris fina:** *allowed-to-use* entre piezas.
@@ -237,8 +237,8 @@ En cada tabla, **"Usa a"** dice a qué pieza pasa la petición: en la misma laye
 ## 4. Patrones
 
 - **Estructura en capas:** el patrón de esta vista. Se usa de forma estricta (*allowed-to-use*) entre tiers y entre las layers de cada componente, y de forma relajada (*allowed-to-use-below*) solo en los casos marcados.
-- **Cliente-servidor y SOFEA sobre microservicios** (ver [estilos arquitectónicos](estilos_arquitectonicos.md)): los tiers de Presentación, Orquestación y Lógica de negocio son la forma física de esos estilos. La presentación es un cliente separado y el gateway es el único servidor que ve.
-- **El gateway como orquestador** (ver [vista C&C](vista-cc.md)): Pz_api_ag no tiene reglas de negocio propias; coordina a los microservicios. Por eso tiene su propio tier, **Orquestación**, y su capa del medio se llama Orquestación.
+- **Cliente-servidor y SOFEA sobre microservicios** (ver [estilos arquitectónicos](../../estilos_arquitectonicos.md)): los tiers de Presentación, Orquestación y Lógica de negocio son la forma física de esos estilos. La presentación es un cliente separado y el gateway es el único servidor que ve.
+- **El gateway como orquestador** (ver [vista C&C](../cc/vista-cc-broker.md)): Pz_api_ag no tiene reglas de negocio propias; coordina a los microservicios. Por eso tiene su propio tier, **Orquestación**, y su capa del medio se llama Orquestación.
 
 ## 5. Restricciones y observaciones
 

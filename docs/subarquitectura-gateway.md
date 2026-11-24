@@ -2,7 +2,7 @@
 
 ## Descripción
 
-Esta vista abre el componente **API Gateway BFF** de la [vista C&C](vista-cc.md) y muestra cómo está organizado por dentro. El Gateway es el único punto de entrada de la SPA: recibe GraphQL por HTTP y suscripciones por WebSocket, valida el JWT y traduce cada operación a llamadas REST a los dos microservicios. No tiene base de datos.
+Esta vista abre el componente **API Gateway BFF** de la [vista C&C](vistas/cc/vista-cc-broker.md) y muestra cómo está organizado por dentro. El Gateway es el único punto de entrada de la SPA: recibe GraphQL por HTTP y suscripciones por WebSocket, valida el JWT y traduce cada operación a llamadas REST a los dos microservicios. No tiene base de datos.
 
 Está escrito en **Node.js + TypeScript** con **GraphQL Yoga** y se organiza en tres niveles: el **servidor** recibe las peticiones, los **módulos** resuelven cada operación y los **clientes HTTP** hablan con cada microservicio.
 

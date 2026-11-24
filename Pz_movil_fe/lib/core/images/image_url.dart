@@ -6,6 +6,7 @@ import '../../config/app_config.dart';
 /// la URL del gateway (`PUJAZ_GRAPHQL_HTTP`). Las URLs completas no cambian.
 String resolveImageUrl(String url, {String? graphqlHttpUrl}) {
   if (!url.startsWith('/')) return url;
-  final base = Uri.parse(graphqlHttpUrl ?? AppConfig.fromEnvironment().httpUrl);
+  final base = Uri.parse(
+      graphqlHttpUrl ?? (AppConfig.active ?? AppConfig.fromEnvironment()).httpUrl);
   return base.resolve(url).toString();
 }
