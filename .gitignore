@@ -20,3 +20,6 @@ playwright-report/
 ESTUDIO_DOCKER.md
 target/
 **/target/
+
+# Material TLS local: nunca versionar claves ni CA de desarrollo.
+Pz_waf_fw/certs/
