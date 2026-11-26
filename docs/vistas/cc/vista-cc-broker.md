@@ -1,6 +1,6 @@
 # Vista C&C con broker de eventos · Pujaz
 
-Esta vista muestra los **19 componentes** de Pujaz en tiempo de ejecución y los conectores entre ellos, con el broker de eventos `Pz_eventos_mq` (RabbitMQ) como bus asíncrono en la base del diagrama.
+Esta vista muestra los **20 componentes** de Pujaz en tiempo de ejecución y los conectores entre ellos, con el broker de eventos `Pz_eventos_mq` (RabbitMQ) como bus asíncrono en la base del diagrama.
 
 Se considera componente cada pieza de software del sistema que se ejecuta como proceso independiente, sin importar dónde corra. Por eso `Pz_movil_fe`, que corre en Android y no en un contenedor, es un componente igual que los demás.
 
@@ -41,7 +41,7 @@ El diagrama incluye una leyenda con todas las convenciones. En resumen:
 
 - **Colores de componentes:** azul para presentación y Gateway, rojo para el WAF, gris para los proxies, verde para lógica, amarillo para datos y naranja para el broker.
 - **Fronteras:** gris punteada para el sistema Pujaz y roja punteada para la zona interna. El borde punteado redondeado marca un actor externo.
-- **Conectores:** notación de interfaz requerida y provista (`──( ●──`). El semicírculo `(` queda del lado del componente que requiere la interfaz e inicia la conexión, y el punto `●` del lado del que la provee. En verde y grueso van los cifrados con TLS; en negro, los que no van cifrados y solo circulan por redes internas. La conexión de cada servicio con su base de datos es una línea simple.
+- **Conectores:** notación de interfaz requerida y provista (`──( ●──`). El semicírculo `(` queda del lado del componente que requiere la interfaz e inicia la conexión, y el punto `●` del lado del que la provee. En verde y grueso van los cifrados con TLS (solo hasta el WAF); en negro, los que no van cifrados y solo circulan por redes internas. La conexión de cada servicio con su base de datos es una línea simple.
 
 ## Componentes
 
@@ -72,16 +72,16 @@ El diagrama incluye una leyenda con todas las convenciones. En resumen:
 
 ## Conectores
 
-**TLS hasta el Gateway.** Todo conector desde el navegador o la APK hasta `Pz_api_ag` va cifrado con TLS (HTTPS / WSS). Eso incluye los saltos internos de esa cadena: WAF → proxies, proxies → `Pz_web_fe` y `Pz_api_ag`, y la consulta SSR de `Pz_web_fe` al Gateway. El WAF descifra para inspeccionar cada petición y vuelve a cifrar hacia los proxies. Desde el Gateway hacia adentro (HTTP / REST, AMQP y db_connector) el tráfico no va cifrado; se protege con la segmentación en redes internas aisladas.
+**TLS hasta el WAF.** Los conectores del navegador y de la APK hacia `Pz_waf_fw` van cifrados con TLS (HTTPS / WSS). El WAF termina el TLS: descifra cada petición para inspeccionarla y la reenvía sin cifrar. Desde el WAF hacia adentro (proxies, `Pz_web_fe`, Gateway, servicios, broker y bases de datos) el tráfico va por HTTP / WS, HTTP / REST, AMQP y db_connector sin cifrar, y se protege con la segmentación en redes internas aisladas.
 
 | Conector | Origen | Destino | Descripción |
 |---|---|---|---|
 | **HTTPS / WSS** | Navegador web (externo) | `Pz_waf_fw` | Peticiones de páginas, queries y mutations, y precio en vivo por WebSocket. Todo entra por el WAF. |
 | **HTTPS / WSS** | `Pz_movil_fe` | `Pz_waf_fw` | La app hace queries y mutations, pide imágenes y recibe el precio en vivo por WebSocket a través del mismo WAF. |
-| **HTTPS / WSS filtrado** | `Pz_waf_fw` | `Pz_web_rp`, `Pz_movil_rp` | Solo pasa a los proxies el tráfico que cumple las reglas del WAF. |
-| **HTTPS (páginas)** | `Pz_web_rp` | `Pz_web_fe` | Peticiones de páginas, que `Pz_web_fe` renderiza con SSR y devuelve como HTML. |
-| **GraphQL · HTTPS / WSS** | `Pz_web_rp`, `Pz_movil_rp` | `Pz_api_ag` | Ruta `/graphql` de cada canal hacia el Gateway, incluido el WebSocket del precio en vivo. |
-| **GraphQL SSR · HTTPS** | `Pz_web_fe` | `Pz_api_ag` | Consultas para renderizar la página. Nacen de una petición del navegador que ya pasó por el WAF. |
+| **HTTP / WS filtrado** | `Pz_waf_fw` | `Pz_web_rp`, `Pz_movil_rp` | Solo pasa a los proxies el tráfico que cumple las reglas del WAF. |
+| **HTTP (páginas)** | `Pz_web_rp` | `Pz_web_fe` | Peticiones de páginas, que `Pz_web_fe` renderiza con SSR y devuelve como HTML. |
+| **GraphQL · HTTP / WS** | `Pz_web_rp`, `Pz_movil_rp` | `Pz_api_ag` | Ruta `/graphql` de cada canal hacia el Gateway, incluido el WebSocket del precio en vivo. |
+| **GraphQL SSR · HTTP** | `Pz_web_fe` | `Pz_api_ag` | Consultas para renderizar la página. Nacen de una petición del navegador que ya pasó por el WAF. |
 | **HTTP / REST** | `Pz_api_ag` | Los seis servicios de lógica | Orquestación síncrona: el Gateway delega cada operación en el servicio que la resuelve. |
 | **HTTP / REST** | `Pz_cierre_cl` | `Pz_subastas_cl` | Petición periódica para cerrar subastas vencidas. Ese cierre es el que publica `SubastaCerrada`. |
 | **db_connector** | Cada servicio de lógica | Su propia base de datos | Conexión exclusiva del servicio con su base (Database per Service). |
