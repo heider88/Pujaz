@@ -34,24 +34,27 @@ El fuente editable está en [vista-capas.drawio](vista-capas.drawio).
 
 | Elemento | Forma y color |
 |---|---|
-| Tier | Carpeta azul (`#DAE8FC`), con el nombre en negrita |
+| Tier | Franja de todo el ancho con una banda azul oscuro (`#1F3A5F`) a la izquierda y el nombre en blanco. Los fondos alternan entre gris azulado (`#DCE5F0`) y casi blanco (`#FBFCFD`) para separar un tier del siguiente. |
 | Componente | Caja blanca con borde negro grueso y el nombre en negrita |
-| Layer | Carpeta verde (`#D5E8D4`), dentro de un componente |
-| Segment | Carpeta amarilla (`#FFF2CC`), dentro de una layer |
+| Layer | Carpeta verde (`#C8E6C9`) con borde verde oscuro (`#2E7D32`), dentro de un componente |
+| Segment | Carpeta blanca con borde naranja (`#E08E0B`), dentro de una layer |
 
-Las etiquetas no llevan «tier», «layer» ni «segment»: el color dice qué es cada carpeta.
+Las etiquetas no llevan «tier», «layer» ni «segment»: la forma y el color dicen qué es cada elemento. Cada nivel es más claro o más oscuro que el que lo contiene, así que también se distinguen en blanco y negro.
 
 **Convenciones de flechas** (también en el cuadro *Convenciones de flechas* del diagrama)
 
-Todas las flechas son punteadas y apuntan de quien usa a quien es usado. No llevan el nombre de la relación escrito: el color y el grosor lo indican.
+Todas las flechas apuntan de quien usa a quien es usado. No llevan el nombre de la relación escrito: el color, el grosor y el trazo lo indican.
 
 | Flecha | Relación | Dónde se usa |
 |---|---|---|
-| Gris fina | *allowed-to-use* | Entre piezas de un mismo componente, hacia la layer de abajo. |
-| Negra | *allowed-to-use* | Entre componentes o entre tiers: salidas de un componente hacia otro. |
-| Roja gruesa | *allowed-to-use-below* | Cuando se salta una o más capas. Dentro de un componente baja por su costado derecho, para no cruzar sobre otras piezas. Las de los proxies bajan por el espacio libre a la derecha de Pz_web_fe hasta Pz_api_ag. |
+| Gris continua fina | *allowed-to-use* | Entre piezas de un mismo componente, hacia la layer de abajo. |
+| Negra continua gruesa | *allowed-to-use* | Entre componentes o entre tiers: salidas de un componente hacia otro. |
+| Roja discontinua gruesa | *allowed-to-use-below* | Cuando se salta una o más capas. Es la única discontinua. Dentro de un componente baja por su costado derecho, para no cruzar sobre otras piezas. Las de los proxies bajan por el espacio libre a la derecha de Pz_web_fe hasta Pz_api_ag. |
 
 **Cómo leerlo**
+- **El diagrama se lee de arriba hacia abajo, un tier tras otro.** En Lógica de negocio los microservicios van en dos columnas; Pz_cierre_cl está junto a Pz_subastas_cl, que es el componente que usa.
+- **Las flechas hacia las bases bajan por los costados del tier Lógica de negocio:** las de la columna izquierda por la izquierda y las de la derecha por la derecha, cada una en su propio carril y sin cruzarse.
+- **Las flechas hacia Pz_eventos_mq se juntan en un bus que baja por el centro,** entre las dos columnas. La de Pz_api_ag baja por el borde derecho, porque se salta el tier Lógica de negocio.
 - **Las piezas de una misma layer también se usan entre sí** (por ejemplo, el enrutador llama a cada endpoint). Para que el diagrama se lea, esas flechas no se dibujan; están en las tablas de abajo.
 - **Las flechas indican quién usa a quién.** Cuando un evento llega por el broker, la flecha va desde la pieza que se suscribe (el consumidor) hacia Pz_eventos_mq, aunque el evento *entre* por ahí.
 
