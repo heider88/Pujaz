@@ -4,8 +4,6 @@
 
 Esta vista muestra la **estructura de descomposición** de Pujaz desde sus funciones: el sistema se divide en módulos, cada módulo en submódulos y cada submódulo en las funciones que ofrece. No muestra cómo se comunican los módulos (eso está en la [vista C&C](../cc/vista-cc-broker.md)) ni en qué nivel corre cada uno (eso está en la [vista de capas](../capas/vista-capas.md)).
 
-La vista por componente técnico (controladores, repositorios, clientes…) sigue en [vista-descomposicion.png](vista-descomposicion.png).
-
 **Elementos**
 
 | Elemento | Qué es en Pujaz |
